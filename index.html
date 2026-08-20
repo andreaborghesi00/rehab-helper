@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1013">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rehab">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<link rel="icon" href="./icon-192.png">
+<title>Finger Rehab</title>
+<style>
+  :root{
+    --bg:#0e1013; --card:#171a20; --card2:#1e222a; --line:#282d37;
+    --tx:#eef1f6; --tx2:#9aa3b2; --tx3:#6b7482;
+    --ok:#3ddc84; --wait:#5b9cff; --warn:#ffb020; --climb:#c07bff; --bad:#ff5f56;
+    --r:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--tx);
+    font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:520px;margin:0 auto;padding:14px 14px 90px}
+  header{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 14px}
+  header h1{font-size:17px;margin:0;font-weight:650;letter-spacing:-.2px}
+  header h1 span{color:var(--tx3);font-weight:500}
+  .iconbtn{background:var(--card);border:1px solid var(--line);color:var(--tx2);width:38px;height:38px;
+    border-radius:11px;font-size:17px;display:grid;place-items:center;cursor:pointer}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:12px}
+  .card h2{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--tx3);margin:0 0 10px;font-weight:650}
+
+  /* status */
+  #status{position:relative;overflow:hidden;text-align:center;padding:26px 16px 22px}
+  #status:before{content:"";position:absolute;inset:0;opacity:.13;background:radial-gradient(120% 90% at 50% 0%,var(--accent,var(--ok)),transparent 65%)}
+  #status>*{position:relative}
+  .pill{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;letter-spacing:.07em;
+    text-transform:uppercase;color:var(--accent,var(--ok));background:color-mix(in srgb,var(--accent,var(--ok)) 14%,transparent);
+    border:1px solid color-mix(in srgb,var(--accent,var(--ok)) 32%,transparent);padding:5px 11px;border-radius:999px}
+  .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .big{font-size:44px;font-weight:700;letter-spacing:-1.5px;margin:12px 0 2px;font-variant-numeric:tabular-nums}
+  .big.sm{font-size:30px;letter-spacing:-.6px}
+  .sub{color:var(--tx2);font-size:14px}
+  .bar{height:5px;border-radius:99px;background:var(--card2);overflow:hidden;margin-top:16px}
+  .bar>i{display:block;height:100%;background:var(--accent,var(--ok));border-radius:99px;transition:width .4s}
+
+  /* next up */
+  .row{display:flex;align-items:center;gap:12px}
+  .tag{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 9px;border-radius:7px}
+  .tag.static{background:rgba(61,220,132,.14);color:var(--ok)}
+  .tag.dynamic{background:rgba(91,156,255,.16);color:var(--wait)}
+  .tag.climb{background:rgba(192,123,255,.16);color:var(--climb)}
+  .kv{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:15px}
+  .kv:last-child{border-bottom:0;padding-bottom:0}
+  .kv b{font-weight:600}
+  .kv span{color:var(--tx2)}
+  ul.steps{margin:2px 0 0;padding-left:18px;color:var(--tx2);font-size:14.5px}
+  ul.steps li{margin:5px 0}
+  ul.steps b{color:var(--tx)}
+
+  /* buttons */
+  .btn{display:block;width:100%;border:0;border-radius:14px;padding:16px;font-size:16px;font-weight:650;
+    font-family:inherit;cursor:pointer;background:var(--card2);color:var(--tx);border:1px solid var(--line)}
+  .btn.primary{background:var(--ok);color:#07130c;border-color:transparent}
+  .btn.warn{background:var(--warn);color:#241700;border-color:transparent}
+  .btn.ghost{background:transparent}
+  .btn:active{transform:scale(.985)}
+  .btn[disabled]{opacity:.45}
+  .btns{display:flex;gap:10px}
+  .btns>*{flex:1}
+  .fab{position:fixed;left:0;right:0;bottom:0;padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+    background:linear-gradient(to top,var(--bg) 62%,transparent);z-index:20}
+  .fab .inner{max-width:520px;margin:0 auto;display:flex;gap:10px}
+  .fab .inner .btn{padding:15px}
+  .fab .btn.sec{flex:0 0 auto;width:58px;font-size:20px;padding:0}
+
+  /* alert */
+  .alert{border-radius:var(--r);padding:14px 16px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start;
+    background:rgba(255,176,32,.11);border:1px solid rgba(255,176,32,.35)}
+  .alert .ic{font-size:19px;line-height:1.2}
+  .alert h3{margin:0 0 3px;font-size:15px;font-weight:650;color:var(--warn)}
+  .alert p{margin:0;font-size:14px;color:var(--tx2)}
+  .alert.purple{background:rgba(192,123,255,.1);border-color:rgba(192,123,255,.32)}
+  .alert.purple h3{color:var(--climb)}
+  .alert.green{background:rgba(61,220,132,.1);border-color:rgba(61,220,132,.32)}
+  .alert.green h3{color:var(--ok)}
+  .alert.red{background:rgba(255,95,86,.1);border-color:rgba(255,95,86,.32)}
+  .alert.red h3{color:var(--bad)}
+
+  /* history */
+  .hist{list-style:none;margin:0;padding:0}
+  .hist li{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14.5px}
+  .hist li:last-child{border-bottom:0}
+  .hist .when{color:var(--tx3);font-size:12.5px}
+  .hist .grow{flex:1;min-width:0}
+  .hist .note{color:var(--tx3);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .del{background:none;border:0;color:var(--tx3);font-size:15px;padding:6px 4px;cursor:pointer;font-family:inherit}
+  .del.arm{color:var(--bad);font-size:12.5px;font-weight:650}
+  .daysep{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx3);padding:14px 0 4px;font-weight:650}
+  .daysep:first-child{padding-top:0}
+
+  /* modal */
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:50;display:none;align-items:flex-end;
+    backdrop-filter:blur(3px)}
+  .scrim.on{display:flex}
+  .sheet{background:var(--card);width:100%;max-width:520px;margin:0 auto;border-radius:22px 22px 0 0;
+    padding:8px 16px calc(20px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto;
+    border-top:1px solid var(--line);animation:up .22s ease}
+  @keyframes up{from{transform:translateY(24px);opacity:.4}}
+  .grab{width:38px;height:4px;background:var(--line);border-radius:99px;margin:6px auto 14px}
+  .sheet h2{font-size:19px;margin:0 0 14px;font-weight:650}
+  label{display:block;font-size:12.5px;color:var(--tx2);margin:14px 0 6px;font-weight:600}
+  input,select,textarea{width:100%;background:var(--card2);border:1px solid var(--line);color:var(--tx);
+    border-radius:11px;padding:13px;font:16px inherit;font-family:inherit}
+  input:focus,select,textarea:focus{outline:2px solid rgba(91,156,255,.5);outline-offset:-1px}
+  .seg{display:flex;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+  .seg button{flex:1;background:none;border:0;color:var(--tx2);font:15px/1 inherit;font-weight:650;padding:12px 6px;
+    border-radius:9px;cursor:pointer;font-family:inherit}
+  .seg button.on{background:var(--tx);color:var(--bg)}
+  .two{display:flex;gap:10px}
+  .two>div{flex:1}
+  .hint{font-size:12.5px;color:var(--tx3);margin:6px 0 0}
+  .stepper{display:flex;align-items:center;gap:8px}
+  .stepper button{width:52px;height:48px;border-radius:11px;background:var(--card2);border:1px solid var(--line);
+    color:var(--tx);font-size:21px;cursor:pointer;flex:0 0 auto;font-family:inherit}
+  .stepper input{text-align:center;font-weight:650}
+
+  /* guided timer */
+  #tmr{text-align:center}
+  #tmrPhase{font-size:13px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--accent,var(--ok))}
+  #tmrBig{font-size:60px;font-weight:700;letter-spacing:-2px;font-variant-numeric:tabular-nums;margin:4px 0}
+  #tmrSub{color:var(--tx2);font-size:14px;min-height:21px}
+  .cue{font-size:34px;font-weight:750;letter-spacing:-.5px;margin:2px 0 0}
+  details>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+  details>summary::-webkit-details-marker{display:none}
+  details>summary h2{margin:0}
+  details>summary:after{content:"▾";color:var(--tx3);font-size:13px}
+  details[open]>summary:after{content:"▴"}
+  .mono{font-variant-numeric:tabular-nums}
+  .center{text-align:center}
+  .muted{color:var(--tx3);font-size:12.5px}
+  a{color:var(--wait)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Finger Rehab <span id="hDay"></span></h1>
+    <button class="iconbtn" id="btnSettings" aria-label="Settings">⚙</button>
+  </header>
+
+  <div id="alerts"></div>
+
+  <div class="card" id="status">
+    <span class="pill"><i class="dot"></i><span id="stPill">—</span></span>
+    <div class="big" id="stBig">—</div>
+    <div class="sub" id="stSub"></div>
+    <div class="bar"><i id="stBar" style="width:0"></i></div>
+  </div>
+
+  <div class="card" id="upnext">
+    <h2>Next session</h2>
+    <div class="row" style="margin-bottom:12px">
+      <span class="tag" id="nxTag">STATIC</span>
+      <div style="flex:1"></div>
+      <div style="text-align:right">
+        <div style="font-size:22px;font-weight:700" class="mono" id="nxWeight">—</div>
+        <div class="muted" id="nxPct"></div>
+      </div>
+    </div>
+    <ul class="steps" id="nxSteps"></ul>
+  </div>
+
+  <details class="card" id="tmrCard">
+    <summary><h2>Guided timer</h2></summary>
+    <div id="tmr" style="padding-top:14px">
+      <div id="tmrPhase">Ready</div>
+      <div id="tmrBig">0:30</div>
+      <div class="cue" id="tmrCue" style="display:none">UP</div>
+      <div id="tmrSub">3 sets · tap start when you're on the edge</div>
+      <div class="btns" style="margin-top:14px">
+        <button class="btn primary" id="tmrGo">Start</button>
+        <button class="btn ghost" id="tmrReset">Reset</button>
+      </div>
+      <p class="hint">Keep the screen on — the timer pauses if the tab is closed.</p>
+    </div>
+  </details>
+
+  <div class="card">
+    <h2>Progress to <span id="pgTargetPct">30</span>% bodyweight</h2>
+    <div class="kv"><span>Current load</span><b class="mono" id="pgCur">—</b></div>
+    <div class="kv"><span>Target</span><b class="mono" id="pgTarget">—</b></div>
+    <div class="kv"><span>Sessions at this weight</span><b class="mono" id="pgCount">—</b></div>
+    <div class="bar" style="margin-top:14px"><i id="pgBar" style="width:0"></i></div>
+    <p class="hint" id="pgHint"></p>
+  </div>
+
+  <div class="card">
+    <h2>History</h2>
+    <div id="histWrap"><p class="muted" style="margin:0">Nothing logged yet.</p></div>
+  </div>
+
+  <details class="card">
+    <summary><h2>Physio rules</h2></summary>
+    <ul class="steps" style="padding-top:12px">
+      <li><b>20 mm edge</b>, half crimp. Start at 10% bodyweight, build to 30%.</li>
+      <li><b>Never both exercises in one session</b>, and always <b>≥ 6 h apart</b>.</li>
+      <li><b>Alternate</b> static → dynamic → static → …</li>
+      <li><b>Skip if you're climbing</b> that day (max 1 h, with H-taping).</li>
+      <li>Add ~1 kg every <b>4 sessions</b>.</li>
+      <li>At 30% BW you can climb longer than 1 h. Keep going <b>1 more month</b>; if painless, drop the H-tape. If pain remains, step back.</li>
+    </ul>
+  </details>
+</div>
+
+<div class="fab"><div class="inner">
+  <button class="btn primary" id="btnLog">Log session</button>
+  <button class="btn sec" id="btnClimb" title="Log a climbing day">🧗</button>
+</div></div>
+
+<!-- LOG SHEET -->
+<div class="scrim" id="logScrim"><div class="sheet">
+  <div class="grab"></div>
+  <h2>Log a session</h2>
+  <label>Exercise</label>
+  <div class="seg" id="logType">
+    <button data-v="static">Static</button>
+    <button data-v="dynamic">Dynamic</button>
+  </div>
+  <p class="hint" id="logTypeHint"></p>
+  <label>Weight added (kg)</label>
+  <div class="stepper">
+    <button id="wMinus">−</button>
+    <input type="number" id="logWeight" step="0.1" inputmode="decimal">
+    <button id="wPlus">+</button>
+  </div>
+  <div class="two">
+    <div>
+      <label>Sets completed</label>
+      <select id="logSets"><option>1</option><option>2</option><option selected>3</option><option>4</option></select>
+    </div>
+    <div>
+      <label>When</label>
+      <input type="datetime-local" id="logWhen">
+    </div>
+  </div>
+  <label>Notes (pain, feel…)</label>
+  <textarea id="logNote" rows="2" placeholder="optional"></textarea>
+  <div class="btns" style="margin-top:20px">
+    <button class="btn ghost" data-close>Cancel</button>
+    <button class="btn primary" id="logSave">Save</button>
+  </div>
+</div></div>
+
+<!-- SETTINGS SHEET -->
+<div class="scrim" id="setScrim"><div class="sheet">
+  <div class="grab"></div>
+  <h2 id="setTitle">Settings</h2>
+  <p class="hint" id="setIntro" style="margin-top:-8px"></p>
+  <div class="two">
+    <div><label>Bodyweight (kg)</label><input type="number" id="sBw" step="0.5" inputmode="decimal"></div>
+    <div><label>Smallest plate (kg)</label><input type="number" id="sInc" step="0.05" inputmode="decimal"></div>
+  </div>
+  <label>Current added weight (kg)</label>
+  <input type="number" id="sCur" step="0.1" inputmode="decimal">
+  <p class="hint" id="sCurHint"></p>
+  <div class="two">
+    <div><label>Min hours between sessions</label><input type="number" id="sHours" step="1" inputmode="numeric"></div>
+    <div><label>Sessions per weight bump</label><input type="number" id="sPer" step="1" inputmode="numeric"></div>
+  </div>
+  <div class="two">
+    <div><label>Start % of bodyweight</label><input type="number" id="sStart" step="1" inputmode="numeric"></div>
+    <div><label>Target % of bodyweight</label><input type="number" id="sTarget" step="1" inputmode="numeric"></div>
+  </div>
+  <label>Backup</label>
+  <div class="btns">
+    <button class="btn ghost" id="sExport">Export</button>
+    <button class="btn ghost" id="sImport">Import</button>
+  </div>
+  <input type="file" id="sFile" accept="application/json,.json" style="display:none">
+  <div class="btns" style="margin-top:20px">
+    <button class="btn ghost" data-close>Close</button>
+    <button class="btn primary" id="sSave">Save</button>
+  </div>
+  <p class="center" style="margin:18px 0 0"><button class="del" id="sWipe">Erase all data</button></p>
+</div></div>
+
+<script>
+(function(){
+'use strict';
+const HOUR=36e5, DAY=864e5;
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const KEY='rehab-helper-v1';
+
+/* ---------- exercise definitions (from the physio notes) ---------- */
+const EX={
+  static:{
+    name:'Static', label:'Static hold',
+    steps:['Lift <b>controllably</b> onto a 20&nbsp;mm edge, <b>half crimp</b>.',
+           'Hold <b>30 seconds</b>.','Rest <b>2 minutes</b>.','<b>3 sets</b>.'],
+    sets:3, work:30, rest:120, reps:0
+  },
+  dynamic:{
+    name:'Dynamic', label:'Plyometric lifts',
+    steps:['20&nbsp;mm edge, half crimp. Lift <b>fast</b>.',
+           '<b>3 s up, 3 s down × 10 reps</b>.','Rest <b>2 minutes</b>.','<b>3 sets</b>.'],
+    sets:3, work:60, rest:120, reps:10
+  }
+};
+
+/* ---------- state ---------- */
+const DEF={v:1,
+  settings:{bw:null,inc:1,minHours:6,perIncrease:4,startPct:10,targetPct:30},
+  weight:{current:null,setAt:null},
+  sessions:[], phase:{targetReachedAt:null}};
+
+let S=load();
+
+function load(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(KEY)||'null');
+    if(!raw) return structuredClone(DEF);
+    const s=structuredClone(DEF);
+    Object.assign(s.settings,raw.settings||{});
+    Object.assign(s.weight,raw.weight||{});
+    Object.assign(s.phase,raw.phase||{});
+    s.sessions=Array.isArray(raw.sessions)?raw.sessions:[];
+    return s;
+  }catch(e){ return structuredClone(DEF); }
+}
+function save(){ try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){} }
+
+/* ---------- helpers ---------- */
+const roundTo=(v,step)=>{ if(!step||step<=0) step=0.1; return Math.round(v/step)*step; };
+const fmtKg=v=>(v==null?'—':(Math.round(v*100)/100).toString().replace(/\.0+$/,'')+' kg');
+const startOfDay=t=>{const d=new Date(t);d.setHours(0,0,0,0);return d.getTime()};
+function fmtDur(ms){
+  if(ms<0) ms=0;
+  const t=Math.ceil(ms/1000), h=Math.floor(t/3600), m=Math.floor(t%3600/60), s=t%60;
+  if(h>0) return h+'h '+String(m).padStart(2,'0')+'m';
+  return m+':'+String(s).padStart(2,'0');
+}
+function clock(t){ return new Date(t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+function dayLabel(t){
+  const d0=startOfDay(t), today=startOfDay(Date.now());
+  if(d0===today) return 'Today';
+  if(d0===today-DAY) return 'Yesterday';
+  return new Date(t).toLocaleDateString([], {weekday:'short', day:'numeric', month:'short'});
+}
+function toLocalInput(t){
+  const d=new Date(t-d0off(t));
+  return d.toISOString().slice(0,16);
+}
+function d0off(t){ return new Date(t).getTimezoneOffset()*60000; }
+
+/* ---------- derived ---------- */
+const exSessions=()=>S.sessions.filter(s=>s.type!=='climb').sort((a,b)=>a.ts-b.ts);
+function derive(now){
+  now=now||Date.now();
+  const ex=exSessions();
+  const last=ex[ex.length-1]||null;
+  const nextType = last ? (last.type==='static'?'dynamic':'static') : 'static';
+  const readyAt = last ? last.ts + S.settings.minHours*HOUR : 0;
+  const climbedToday = S.sessions.some(s=>s.type==='climb' && startOfDay(s.ts)===startOfDay(now));
+  const target = S.settings.bw ? roundTo(S.settings.bw*S.settings.targetPct/100, S.settings.inc) : null;
+  const cur = S.weight.current;
+  // sessions done at the current load = trailing run of sessions logged with that weight.
+  // (timestamp-based counting breaks when a session is back-dated to the minute)
+  let since = 0;
+  if(cur!=null){
+    for(let i=ex.length-1;i>=0;i--){
+      if(ex[i].weight!=null && Math.abs(ex[i].weight-cur)<1e-9) since++; else break;
+    }
+  }
+  const atTarget = (cur!=null && target!=null && cur>=target-1e-9);
+  const dueIncrease = !atTarget && since>=S.settings.perIncrease;
+  let state='ready';
+  if(now<readyAt) state='waiting';
+  else if(climbedToday) state='climb';
+  return {now,last,nextType,readyAt,climbedToday,target,cur,since,atTarget,dueIncrease,state,count:ex.length};
+}
+function syncPhase(){
+  const d=derive();
+  if(d.atTarget && !S.phase.targetReachedAt){ S.phase.targetReachedAt=Date.now(); save(); }
+  if(!d.atTarget && S.phase.targetReachedAt){ S.phase.targetReachedAt=null; save(); }
+}
+
+/* ---------- render ---------- */
+function render(){
+  syncPhase();
+  const d=derive();
+  const st=$('#status');
+  $('#hDay').textContent = d.count ? '· session '+(d.count+1) : '';
+
+  // status card
+  let accent='var(--ok)', pill='Ready', big='Go now', sub='', pct=1;
+  if(d.state==='waiting'){
+    accent='var(--wait)'; pill='Resting';
+    big=fmtDur(d.readyAt-d.now);
+    sub='Next window at <b>'+clock(d.readyAt)+'</b>'+(startOfDay(d.readyAt)!==startOfDay(d.now)?' ('+dayLabel(d.readyAt).toLowerCase()+')':'');
+    const span=S.settings.minHours*HOUR;
+    pct=Math.min(1,Math.max(0,1-(d.readyAt-d.now)/span));
+  }else if(d.state==='climb'){
+    accent='var(--climb)'; pill='Climbing day'; big='Skip today'; pct=1;
+    sub='You logged climbing today — rest the fingers. Log anyway if you want to override.';
+  }else{
+    accent='var(--ok)'; pill='Ready'; big=d.count? 'Go now':'Start now'; pct=1;
+    sub=d.last? 'Last session '+dayLabel(d.last.ts).toLowerCase()+' at '+clock(d.last.ts)
+              : 'No sessions yet — begin with the static hold.';
+  }
+  st.style.setProperty('--accent',accent);
+  $('#stPill').textContent=pill;
+  $('#stBig').textContent=big;
+  $('#stBig').classList.toggle('sm', d.state!=='waiting');
+  $('#stSub').innerHTML=sub;
+  $('#stBar').style.width=(pct*100)+'%';
+
+  // next up
+  const ex=EX[d.nextType];
+  const tg=$('#nxTag'); tg.className='tag '+d.nextType; tg.textContent=ex.name;
+  $('#nxWeight').textContent=fmtKg(d.cur);
+  $('#nxPct').textContent = (S.settings.bw && d.cur!=null) ? Math.round(d.cur/S.settings.bw*1000)/10+'% BW' : 'set your bodyweight';
+  $('#nxSteps').innerHTML=ex.steps.map(s=>'<li>'+s+'</li>').join('');
+  if(timer.type!==d.nextType && !timer.running) setTimerType(d.nextType);
+
+  // progress
+  $('#pgTargetPct').textContent=S.settings.targetPct;
+  $('#pgCur').textContent=fmtKg(d.cur);
+  $('#pgTarget').textContent=fmtKg(d.target);
+  $('#pgCount').textContent=d.since+' / '+S.settings.perIncrease;
+  const startW = S.settings.bw? S.settings.bw*S.settings.startPct/100 : 0;
+  let p=0;
+  if(d.target!=null && d.cur!=null && d.target>startW) p=(d.cur-startW)/(d.target-startW);
+  p=Math.min(1,Math.max(0,p));
+  $('#pgBar').parentElement.style.setProperty('--accent', d.atTarget?'var(--ok)':'var(--wait)');
+  $('#pgBar').style.width=(p*100)+'%';
+  $('#pgHint').textContent = d.target==null ? 'Add your bodyweight in settings to see targets.'
+    : d.atTarget ? 'Target reached — see the note above.'
+    : Math.round(p*100)+'% of the way from '+fmtKg(roundTo(startW,S.settings.inc))+' to '+fmtKg(d.target)+'.';
+
+  // the log button only shouts when it's actually time to train
+  const lb=$('#btnLog');
+  lb.className='btn'+(d.state==='ready'?' primary':' ghost');
+  lb.textContent = d.state==='ready' ? 'Log session' : 'Log session anyway';
+  $('#btnClimb').style.opacity = d.climbedToday ? '1' : '.65';
+  $('#btnClimb').style.borderColor = d.climbedToday ? 'var(--climb)' : 'var(--line)';
+
+  renderAlerts(d);
+  renderHistory();
+}
+
+function renderAlerts(d){
+  const box=$('#alerts'); let h='';
+  if(!S.settings.bw) h+=al('warn','⚙','Finish setup','Tap the gear to enter your bodyweight and plate size.');
+  if(d.dueIncrease){
+    const next=Math.min(d.target ?? Infinity, roundTo(d.cur+S.settings.inc,S.settings.inc));
+    h+=al('warn','▲','Time to add weight',
+      d.since+' sessions done at '+fmtKg(d.cur)+'. Go to <b>'+fmtKg(next)+'</b>.'+
+      '<div style="margin-top:10px"><button class="btn warn" id="doBump" style="padding:11px">Bump to '+fmtKg(next)+'</button></div>');
+  }
+  if(S.phase.targetReachedAt){
+    const end=S.phase.targetReachedAt+30*DAY, left=end-Date.now();
+    if(left>0){
+      h+=al('green','🎉','30% bodyweight reached',
+        'You can now climb longer than 1 h. Keep the protocol going for <b>'+Math.ceil(left/DAY)+' more days</b>, still with H-tape.');
+    }else{
+      h+=al('purple','🏁','Final month complete',
+        'If it is painless: drop the H-tape while climbing and return to normal climbing. If pain is still there: step back a phase and talk to your physio.');
+    }
+  }
+  box.innerHTML=h;
+  const b=$('#doBump');
+  if(b) b.onclick=()=>{
+    const d2=derive();
+    let n=roundTo(d2.cur+S.settings.inc,S.settings.inc);
+    if(d2.target!=null) n=Math.min(n,d2.target);
+    S.weight.current=n; S.weight.setAt=Date.now(); save(); syncPhase(); render();
+  };
+}
+function al(cls,ic,t,p){
+  return '<div class="alert '+cls+'"><div class="ic">'+ic+'</div><div style="flex:1"><h3>'+t+'</h3><p>'+p+'</p></div></div>';
+}
+
+let armed=null;
+function renderHistory(){
+  const w=$('#histWrap');
+  const all=[...S.sessions].sort((a,b)=>b.ts-a.ts).slice(0,40);
+  if(!all.length){ w.innerHTML='<p class="muted" style="margin:0">Nothing logged yet.</p>'; return; }
+  let h='', day=null;
+  for(const s of all){
+    const dl=dayLabel(s.ts);
+    if(dl!==day){ day=dl; h+='<div class="daysep">'+dl+'</div><ul class="hist">'; }
+    const tag=s.type==='climb'?'<span class="tag climb">Climb</span>'
+      :'<span class="tag '+s.type+'">'+EX[s.type].name+'</span>';
+    const meta=s.type==='climb'?'climbing day':fmtKg(s.weight)+' · '+(s.sets||3)+' sets';
+    h+='<li>'+tag+'<div class="grow"><div>'+meta+'</div>'+
+       (s.note?'<div class="note">'+esc(s.note)+'</div>':'')+'</div>'+
+       '<span class="when">'+clock(s.ts)+'</span>'+
+       '<button class="del'+(armed===s.id?' arm':'')+'" data-del="'+s.id+'">'+(armed===s.id?'Delete?':'✕')+'</button></li>';
+  }
+  h+='</ul>';
+  w.innerHTML=h;
+  w.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
+    const id=b.dataset.del;
+    if(armed===id){ S.sessions=S.sessions.filter(x=>x.id!==id); armed=null; save(); syncPhase(); render(); }
+    else { armed=id; renderHistory(); setTimeout(()=>{ if(armed===id){armed=null;renderHistory();} },3000); }
+  });
+}
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ---------- sheets ---------- */
+function open(el){ el.classList.add('on'); }
+function close(el){ el.classList.remove('on'); }
+$$('.scrim').forEach(sc=>{
+  sc.addEventListener('click',e=>{ if(e.target===sc) close(sc); });
+  sc.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>close(sc));
+});
+
+/* log sheet */
+let logType='static';
+function openLog(){
+  const d=derive();
+  setLogType(d.nextType);
+  $('#logWeight').value = d.cur!=null? Math.round(d.cur*100)/100 : '';
+  $('#logSets').value='3';
+  $('#logWhen').value=toLocalInput(Date.now());
+  $('#logNote').value='';
+  open($('#logScrim'));
+}
+function setLogType(t){
+  logType=t;
+  $$('#logType button').forEach(b=>b.classList.toggle('on',b.dataset.v===t));
+  const d=derive();
+  $('#logTypeHint').innerHTML = t===d.nextType ? 'Alternating correctly.' :
+    '⚠︎ You did <b>'+EX[t].name.toLowerCase()+'</b> last time too — the physio wants them alternated.';
+}
+$$('#logType button').forEach(b=>b.onclick=()=>setLogType(b.dataset.v));
+$('#wMinus').onclick=()=>nudge(-1); $('#wPlus').onclick=()=>nudge(1);
+function nudge(dir){
+  const i=$('#logWeight'); const inc=S.settings.inc||1;
+  i.value=Math.max(0,Math.round((( parseFloat(i.value)||0)+dir*inc)*100)/100);
+}
+$('#btnLog').onclick=openLog;
+$('#logSave').onclick=()=>{
+  const wv=parseFloat($('#logWeight').value);
+  const when=$('#logWhen').value? new Date($('#logWhen').value).getTime() : Date.now();
+  S.sessions.push({id:uid(),ts:when,type:logType,weight:isNaN(wv)?S.weight.current:wv,
+    sets:parseInt($('#logSets').value,10)||3, note:$('#logNote').value.trim()});
+  if(!isNaN(wv) && wv!==S.weight.current){ S.weight.current=wv; S.weight.setAt=when-1; }
+  if(S.weight.setAt==null) S.weight.setAt=0;
+  save(); syncPhase(); close($('#logScrim')); resetTimer(); render();
+};
+$('#btnClimb').onclick=()=>{
+  const today=startOfDay(Date.now());
+  const ex=S.sessions.find(s=>s.type==='climb'&&startOfDay(s.ts)===today);
+  if(ex){ S.sessions=S.sessions.filter(s=>s.id!==ex.id); }
+  else { S.sessions.push({id:uid(),ts:Date.now(),type:'climb'}); }
+  save(); render();
+};
+function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
+
+/* settings */
+$('#btnSettings').onclick=openSettings;
+function openSettings(first){
+  const s=S.settings;
+  $('#sBw').value=s.bw??''; $('#sInc').value=s.inc; $('#sCur').value=S.weight.current??'';
+  $('#sHours').value=s.minHours; $('#sPer').value=s.perIncrease;
+  $('#sStart').value=s.startPct; $('#sTarget').value=s.targetPct;
+  $('#setTitle').textContent=first?'Set up':'Settings';
+  $('#setIntro').textContent=first?'Two numbers and you are done.':'';
+  updCurHint();
+  open($('#setScrim'));
+}
+$('#sBw').oninput=$('#sStart').oninput=$('#sInc').oninput=updCurHint;
+function updCurHint(){
+  const bw=parseFloat($('#sBw').value), sp=parseFloat($('#sStart').value)||10, inc=parseFloat($('#sInc').value)||1;
+  const tp=parseFloat($('#sTarget').value)||30;
+  if(!bw){ $('#sCurHint').textContent='Enter bodyweight to get a suggestion.'; return; }
+  $('#sCurHint').textContent='Suggested start: '+fmtKg(roundTo(bw*sp/100,inc))+
+    ' · target: '+fmtKg(roundTo(bw*tp/100,inc));
+  if(!$('#sCur').value) $('#sCur').value=Math.round(roundTo(bw*sp/100,inc)*100)/100;
+}
+$('#sSave').onclick=()=>{
+  const s=S.settings;
+  s.bw=parseFloat($('#sBw').value)||null;
+  s.inc=Math.max(0.05,parseFloat($('#sInc').value)||1);
+  s.minHours=Math.max(0,parseFloat($('#sHours').value)||6);
+  s.perIncrease=Math.max(1,parseInt($('#sPer').value,10)||4);
+  s.startPct=parseFloat($('#sStart').value)||10;
+  s.targetPct=parseFloat($('#sTarget').value)||30;
+  const c=parseFloat($('#sCur').value);
+  if(!isNaN(c) && c!==S.weight.current){ S.weight.current=c; S.weight.setAt=Date.now(); }
+  if(S.weight.setAt==null) S.weight.setAt=Date.now();
+  save(); syncPhase(); close($('#setScrim')); render();
+};
+$('#sExport').onclick=()=>{
+  const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='rehab-backup-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+};
+$('#sImport').onclick=()=>$('#sFile').click();
+$('#sFile').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const raw=JSON.parse(r.result);
+      if(!raw || !Array.isArray(raw.sessions)) throw 0;
+      localStorage.setItem(KEY,JSON.stringify(raw));
+      S=load(); save(); syncPhase(); close($('#setScrim')); render();
+    }catch(err){ $('#setIntro').textContent='That file could not be read.'; }
+  };
+  r.readAsText(f); e.target.value='';
+};
+let wipeArm=false;
+$('#sWipe').onclick=()=>{
+  if(!wipeArm){ wipeArm=true; $('#sWipe').textContent='Tap again to erase everything';
+    $('#sWipe').classList.add('arm'); setTimeout(()=>{wipeArm=false;$('#sWipe').textContent='Erase all data';$('#sWipe').classList.remove('arm');},3500); return; }
+  localStorage.removeItem(KEY); S=structuredClone(DEF); close($('#setScrim')); render(); openSettings(true);
+};
+
+/* ---------- guided timer ---------- */
+const timer={type:'static',running:false,phase:'idle',set:1,left:0,endAt:0,rep:1,dir:'UP',wake:null};
+function setTimerType(t){ timer.type=t; resetTimer(); }
+function resetTimer(){
+  const ex=EX[timer.type];
+  Object.assign(timer,{running:false,phase:'idle',set:1,left:ex.work,rep:1,dir:'UP'});
+  releaseWake(); paintTimer();
+}
+function paintTimer(){
+  const ex=EX[timer.type];
+  const card=$('#tmrCard');
+  card.style.setProperty('--accent', timer.phase==='rest'?'var(--wait)':'var(--ok)');
+  const ph=timer.phase==='idle'?(ex.name+' · ready'):timer.phase==='work'?('Set '+timer.set+' — go'):('Rest — set '+timer.set+' next');
+  $('#tmrPhase').textContent = timer.phase==='done'?'Finished':ph;
+  const t=Math.max(0,Math.ceil(timer.left));
+  $('#tmrBig').textContent=Math.floor(t/60)+':'+String(t%60).padStart(2,'0');
+  const cue=$('#tmrCue');
+  if(timer.phase==='work' && ex.reps){ cue.style.display='block'; cue.textContent=timer.dir+'  ·  '+timer.rep+'/'+ex.reps;
+    cue.style.color = timer.dir==='UP'?'var(--ok)':'var(--wait)'; }
+  else cue.style.display='none';
+  $('#tmrSub').textContent = timer.phase==='done' ? 'All '+ex.sets+' sets done — log it below.'
+    : timer.phase==='idle' ? ex.sets+' sets · '+(ex.reps? ex.reps+' reps of 3 s up / 3 s down':'30 s hold')+' · 2 min rest'
+    : 'Set '+timer.set+' of '+ex.sets;
+  $('#tmrGo').textContent = timer.running?'Pause':(timer.phase==='idle'||timer.phase==='done'?'Start':'Resume');
+}
+$('#tmrGo').onclick=()=>{
+  if(timer.phase==='done') resetTimer();
+  if(timer.running){ timer.running=false; releaseWake(); }
+  else{
+    if(timer.phase==='idle'){ timer.phase='work'; timer.left=EX[timer.type].work; timer.rep=1; timer.dir='UP'; }
+    timer.running=true; timer.endAt=Date.now()+timer.left*1000; requestWake(); beep(880,.08);
+  }
+  paintTimer();
+};
+$('#tmrReset').onclick=resetTimer;
+
+function tickTimer(){
+  if(!timer.running) return;
+  const ex=EX[timer.type];
+  timer.left=(timer.endAt-Date.now())/1000;
+  if(timer.phase==='work' && ex.reps){
+    const done=ex.work-timer.left;
+    const r=Math.min(ex.reps,Math.floor(done/6)+1);
+    const dir=(done%6)<3?'UP':'DOWN';
+    if(r!==timer.rep||dir!==timer.dir){ timer.rep=r; timer.dir=dir; beep(dir==='UP'?660:440,.05); }
+  }
+  if(timer.left<=0){
+    if(timer.phase==='work'){
+      if(timer.set>=ex.sets){ timer.phase='done'; timer.running=false; timer.left=0; releaseWake(); beep(1046,.5); }
+      else{ timer.phase='rest'; timer.left=ex.rest; timer.endAt=Date.now()+ex.rest*1000; beep(523,.3); }
+    }else{
+      timer.set++; timer.phase='work'; timer.rep=1; timer.dir='UP';
+      timer.left=ex.work; timer.endAt=Date.now()+ex.work*1000; beep(880,.25);
+    }
+  }
+  paintTimer();
+}
+let AC=null;
+function beep(f,d){
+  try{
+    AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state==='suspended') AC.resume();
+    const o=AC.createOscillator(), g=AC.createGain();
+    o.frequency.value=f; o.type='sine'; o.connect(g); g.connect(AC.destination);
+    g.gain.setValueAtTime(.001,AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(.25,AC.currentTime+.01);
+    g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);
+    o.start(); o.stop(AC.currentTime+d+.02);
+    if(navigator.vibrate) navigator.vibrate(30);
+  }catch(e){}
+}
+async function requestWake(){
+  try{ if('wakeLock' in navigator && !timer.wake) timer.wake=await navigator.wakeLock.request('screen'); }catch(e){}
+}
+function releaseWake(){ try{ timer.wake&&timer.wake.release(); }catch(e){} timer.wake=null; }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&timer.running) requestWake(); });
+
+/* ---------- boot ---------- */
+let lastState=null;
+setInterval(tickTimer,100);          // smooth countdown + accurate 3s up/down cues
+setInterval(()=>{
+  const d=derive();
+  if(d.state!==lastState){ lastState=d.state; render(); }
+  else if(d.state==='waiting'){ $('#stBig').textContent=fmtDur(d.readyAt-d.now);
+    $('#stBar').style.width=Math.min(100,Math.max(0,(1-(d.readyAt-d.now)/(S.settings.minHours*HOUR))*100))+'%'; }
+},1000);
+
+syncPhase();
+render();
+if(!S.settings.bw) openSettings(true);
+
+if('serviceWorker' in navigator && location.protocol==='https:')
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+
+window.__rehab={get S(){return S},set S(v){S=v},derive,render,save,load:()=>{S=load();},KEY};
+})();
+</script>
+</body>
+</html>
