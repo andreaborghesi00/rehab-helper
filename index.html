@@ -30,8 +30,26 @@
   }
   .wrap{max-width:520px;margin:0 auto;padding:14px 14px 90px}
   header{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 14px}
-  header h1{font-size:17px;margin:0;font-weight:650;letter-spacing:-.2px}
-  header h1 span{color:var(--tx3);font-weight:500}
+  .modesw{display:flex;align-items:center;gap:6px;background:none;border:0;padding:6px 8px 6px 2px;
+    color:var(--tx);font:650 17px inherit;font-family:inherit;letter-spacing:-.2px;cursor:pointer;border-radius:9px}
+  .modesw i{font-style:normal;font-size:11px;color:var(--tx3)}
+  .modesw:active{background:var(--card)}
+  .modeopt{display:block;width:100%;text-align:left;background:var(--card2);border:1px solid var(--line);
+    border-radius:13px;padding:15px;margin-bottom:10px;color:var(--tx);font:inherit;font-family:inherit;cursor:pointer}
+  .modeopt.on{border-color:var(--ok)}
+  .modeopt b{display:block;font-size:16px;font-weight:650;margin-bottom:3px}
+  .modeopt span{font-size:13px;color:var(--tx2)}
+  .exrow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .exrow:last-child{border-bottom:0}
+  .exrow .nm{flex:1;min-width:0}
+  .exrow .nm b{display:block;font-size:14.5px;font-weight:600}
+  .exrow .nm span{font-size:12px;color:var(--tx3)}
+  .exrow input{width:76px;text-align:center;padding:9px 4px;font-weight:650;font-size:15px}
+  .exrow .tick{width:40px;height:40px;flex:0 0 auto;border-radius:10px;border:1px solid var(--line);
+    background:var(--card2);color:var(--tx3);font-size:16px;cursor:pointer}
+  .exrow .tick.on{background:var(--ok);color:#07130c;border-color:transparent}
+  .seedwarn{font-size:11px;color:var(--warn)}
+  .tag.test{background:rgba(255,176,32,.16);color:var(--warn)}
   .iconbtn{background:var(--card);border:1px solid var(--line);color:var(--tx2);width:38px;height:38px;
     border-radius:11px;font-size:17px;display:grid;place-items:center;cursor:pointer}
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:12px}
@@ -180,7 +198,9 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>Finger Rehab <span id="hDay"></span></h1>
+    <button class="modesw" id="modeSw" aria-haspopup="true"><span id="modeName">Finger rehab</span><i>▾</i></button>
+    <div style="flex:1"></div>
+    <span class="muted" id="hDay"></span>
     <button class="iconbtn" id="btnSettings" aria-label="Settings">⚙</button>
   </header>
 
@@ -191,6 +211,30 @@
     <div class="big" id="stBig">—</div>
     <div class="sub" id="stSub"></div>
     <div class="bar"><i id="stBar" style="width:0"></i></div>
+  </div>
+
+  <div class="card" id="trPhaseCard">
+    <h2>Phase</h2>
+    <div class="row" style="margin-bottom:12px">
+      <span class="tag" id="trPhaseTag">BRIDGE</span>
+      <div style="flex:1"></div>
+      <div style="text-align:right">
+        <div style="font-size:22px;font-weight:700" class="mono" id="trPhaseVal">—</div>
+        <div class="muted" id="trPhaseSub"></div>
+      </div>
+    </div>
+    <p class="hint" id="trPhaseHint" style="margin:0"></p>
+    <div id="trPhaseAct"></div>
+  </div>
+
+  <div class="card" id="trNextCard">
+    <h2>This session</h2>
+    <div id="trNextBody"></div>
+  </div>
+
+  <div class="card" id="trProgCard">
+    <h2 id="trProgTitle">Bridge progress</h2>
+    <div id="trProgBody"></div>
   </div>
 
   <div class="card" id="upnext">
@@ -231,7 +275,7 @@
     </div>
   </details>
 
-  <div class="card">
+  <div class="card" id="pgCard">
     <h2>Progress to <span id="pgTargetPct">30</span>% bodyweight</h2>
     <div class="kv"><span>Current load</span><b class="mono" id="pgCur">—</b></div>
     <div class="kv"><span>Target</span><b class="mono" id="pgTarget">—</b></div>
@@ -256,7 +300,20 @@
     <div id="histWrap"><p class="muted" style="margin:0">Nothing logged yet.</p></div>
   </div>
 
-  <details class="card">
+  <details class="card" id="rulesTrain">
+    <summary><h2>Protocol rules</h2></summary>
+    <ul class="steps" style="padding-top:12px">
+      <li><b>Bridge:</b> a step unlocks after <b>2 painless sessions</b> and at least <b>3 days</b> at that load. Pain is the gate, not the calendar.</li>
+      <li><b>+1 kg</b> below 25 kg, <b>+2 kg</b> above — keeping the <i>relative</i> step roughly constant.</li>
+      <li>Test your max only once the bridge is done and painless. One hand, on the edge you trained on.</li>
+      <li><b>Block:</b> 10 s on / 50 s off, 2× a day, at least 6 h apart, for 30 days.</li>
+      <li>Working loads are <b>% of your tested max</b>, not % of bodyweight.</li>
+      <li><b>Never change edge depth and load in the same step.</b> Drop the edge, drop the weight, rebuild.</li>
+      <li>Two hands share the load: a two-hand hang at <i>T</i> kg total is <i>T</i>/2 per hand.</li>
+    </ul>
+  </details>
+
+  <details class="card" id="rulesRehab">
     <summary><h2>Physio rules</h2></summary>
     <ul class="steps" style="padding-top:12px">
       <li><b>20 mm edge</b>, half crimp. Start at 10% bodyweight, build to 30%.</li>
@@ -303,6 +360,8 @@
       <input type="datetime-local" id="logWhen">
     </div>
   </div>
+  <div id="blockFields"></div>
+  <div id="edgeField"><label>Edge</label><select id="logEdge"></select></div>
   <label>Pain</label>
   <div class="pain" id="logPain"></div>
   <div class="painrow"><span>0 · none</span><span>10 · worst</span></div>
@@ -312,6 +371,37 @@
   <div class="btns" style="margin-top:20px">
     <button class="btn ghost" data-close>Cancel</button>
     <button class="btn primary" id="logSave">Save</button>
+  </div>
+</div></div>
+
+<!-- MODE SHEET -->
+<div class="scrim" id="modeScrim"><div class="sheet">
+  <div class="grab"></div>
+  <h2>Which programme?</h2>
+  <button class="modeopt" data-m="rehab"><b>Finger rehab</b>
+    <span>Your physio's protocol. Static / dynamic alternating, +1 kg every 4 sessions, 10% → 30% bodyweight.</span></button>
+  <button class="modeopt" data-m="training"><b>Finger training</b>
+    <span>After discharge: the bridge ladder, a max test, then the 30-day Abrahamsson block.</span></button>
+  <p class="hint" id="modeWarn"></p>
+  <div class="btns" style="margin-top:14px"><button class="btn ghost" data-close>Close</button></div>
+</div></div>
+
+<!-- MAX TEST SHEET -->
+<div class="scrim" id="maxScrim"><div class="sheet">
+  <div class="grab"></div>
+  <h2>Log a max test</h2>
+  <p class="hint" style="margin-top:-8px">One hand, the edge you've been training on. Warm up, then the heaviest
+  load you can hold for 7–10 s in control. Stop if it hurts — a max test on an angry tendon is how people undo a rehab.</p>
+  <label>Max hold (kg, one hand)</label>
+  <input type="number" id="maxKg" step="0.5" inputmode="decimal">
+  <label>Edge</label>
+  <select id="maxEdge"></select>
+  <label>Pain during the test</label>
+  <div class="pain" id="maxPain"></div>
+  <p class="hint" id="maxHint"></p>
+  <div class="btns" style="margin-top:20px">
+    <button class="btn ghost" data-close>Cancel</button>
+    <button class="btn primary" id="maxSave">Save max</button>
   </div>
 </div></div>
 
@@ -340,6 +430,10 @@
   <div class="two">
     <div><label>Start % of bodyweight</label><input type="number" id="sStart" step="1" inputmode="numeric"></div>
     <div><label>Target % of bodyweight</label><input type="number" id="sTarget" step="1" inputmode="numeric"></div>
+  </div>
+  <div class="two">
+    <div><label>Pain that still allows a step</label><input type="number" id="sPainOk" step="1" min="0" max="10" inputmode="numeric"></div>
+    <div><label>Bridge ends at % BW</label><input type="number" id="sBridge" step="1" inputmode="numeric"></div>
   </div>
   <label>Backup</label>
   <div class="btns">
@@ -380,11 +474,37 @@ const EX={
   }
 };
 
+/* ---------- Abrahamsson block ----------
+   Same shape as the rehab exercises above, so the existing timer state machine walks
+   them without changes. 10 s on / 50 s off; with Alternating hands the second hand
+   trains inside the first's rest, so restGap() gives 50-10-5 = 35 s and each hand still
+   gets its full 50 s between its own sets — 10 sets, ~10 min, BOTH hands trained.
+   `pct` seeds a working load off the tested half-crimp max. Every grip has its own
+   lift-off max, so these are guesses the user overrides; the app then remembers. */
+const BLOCK_IDS=['b_crimp4','b_drag3','b_pock2m','b_pock2f','b_crim2m','b_crim2f'];
+Object.assign(EX,{
+  b_crimp4:{name:'Four-finger half crimp',short:'4F half crimp',sets:3,work:10,rest:50,reps:0,pct:.80,cue:'the main lift',block:true},
+  b_drag3 :{name:'Three-finger drag',     short:'3F drag',      sets:3,work:10,rest:50,reps:0,pct:.80,cue:'open hand',   block:true},
+  b_pock2m:{name:'Middle two pocket',     short:'Mid 2 pocket', sets:1,work:10,rest:50,reps:0,pct:.55,cue:'middle + ring',block:true},
+  b_pock2f:{name:'Front two pocket',      short:'Front 2 pocket',sets:1,work:10,rest:50,reps:0,pct:.55,cue:'index + middle',block:true},
+  b_crim2m:{name:'Middle two crimp',      short:'Mid 2 crimp',  sets:1,work:10,rest:50,reps:0,pct:.35,cue:'middle + ring',block:true},
+  b_crim2f:{name:'Front two crimp',       short:'Front 2 crimp',sets:1,work:10,rest:50,reps:0,pct:.35,cue:'index + middle',block:true}
+});
+BLOCK_IDS.forEach(id=>{ EX[id].steps=['<b>'+EX[id].name+'</b> — '+EX[id].cue+'.',
+  '<b>10 s on, 50 s off</b>, '+EX[id].sets+' set'+(EX[id].sets>1?'s':'')+'.']; });
+const BLOCK_DAYS=30;
+/* the Bellaroca hexagon, plus the 20 mm the rehab was built on */
+const EDGES=[{mm:28,l:'VI'},{mm:23,l:'V'},{mm:20,l:'pin'},{mm:18,l:'IV'},{mm:15,l:'III'},{mm:11,l:'II'},{mm:7,l:'I'}];
+const edgeLabel=mm=>{const e=EDGES.find(e=>e.mm===mm); return mm+' mm'+(e&&e.l!=='pin'?' ('+e.l+')':'');};
+const fmtSecs=n=>n>=60&&n%60===0?(n/60)+' min':n+' s';
+
 /* ---------- state ---------- */
 const DEF={v:1,
   settings:{bw:null,inc:1,minHours:6,perIncrease:4,startPct:10,targetPct:30,
-            hands:2,switchSec:5,firstHand:'left'},
+            hands:2,switchSec:5,firstHand:'left',painOk:2,bridgeEndPct:48},
+  mode:'rehab',
   weight:{current:null,setAt:null},
+  training:{phase:'bridge',load:null,max:null,maxAt:null,blockStart:null,edge:20,loads:{}},
   sessions:[], phase:{targetReachedAt:null}};
 
 let S=load();
@@ -401,7 +521,16 @@ function load(){
     if(s.settings.firstHand!=='right') s.settings.firstHand='left';
     Object.assign(s.weight,raw.weight||{});
     Object.assign(s.phase,raw.phase||{});
-    s.sessions=Array.isArray(raw.sessions)?raw.sessions:[];
+    Object.assign(s.training,raw.training||{});
+    s.training.loads={...(raw.training&&raw.training.loads||{})};
+    s.mode = raw.mode==='training' ? 'training' : 'rehab';
+    // sessions logged before training mode existed were rehab, on the 20 mm edge
+    s.sessions=(Array.isArray(raw.sessions)?raw.sessions:[]).map(x=>{
+      const o={...x};
+      if(!o.mode) o.mode='rehab';
+      if(o.edge==null) o.edge=20;
+      return o;
+    });
     return s;
   }catch(e){ return structuredClone(DEF); }
 }
@@ -431,13 +560,20 @@ function toLocalInput(t){
 function d0off(t){ return new Date(t).getTimezoneOffset()*60000; }
 
 /* ---------- derived ---------- */
-const exSessions=()=>S.sessions.filter(s=>s.type!=='climb').sort((a,b)=>a.ts-b.ts);
+const allEx=()=>S.sessions.filter(s=>s.type!=='climb').sort((a,b)=>a.ts-b.ts);
+const exSessions=()=>allEx().filter(s=>s.mode!=='training');
+const isTr=()=>S.mode==='training';
 function derive(now){
   now=now||Date.now();
-  const ex=exSessions();
-  const last=ex[ex.length-1]||null;
-  const nextType = last ? (last.type==='static'?'dynamic':'static') : 'static';
-  const readyAt = last ? last.ts + S.settings.minHours*HOUR : 0;
+  const all=allEx(), ex=all.filter(s=>s.mode!=='training'), tr=all.filter(s=>s.mode==='training');
+  // SPACING IS GLOBAL: the 6 h rule reads every session in both programmes, because
+  // fingers have no idea which mode the app is in.
+  const lastAny=all[all.length-1]||null;
+  const last=lastAny;
+  // the static/dynamic rotation carries across the rehab -> bridge handoff
+  const lastRot=[...all].reverse().find(x=>x.type==='static'||x.type==='dynamic');
+  const nextType = lastRot ? (lastRot.type==='static'?'dynamic':'static') : 'static';
+  const readyAt = lastAny ? lastAny.ts + S.settings.minHours*HOUR : 0;
   const climbedToday = S.sessions.some(s=>s.type==='climb' && startOfDay(s.ts)===startOfDay(now));
   const target = S.settings.bw ? roundTo(S.settings.bw*S.settings.targetPct/100, S.settings.inc) : null;
   const cur = S.weight.current;
@@ -445,7 +581,7 @@ function derive(now){
   // (timestamp-based counting breaks when a session is back-dated to the minute)
   let since = 0;
   if(cur!=null){
-    for(let i=ex.length-1;i>=0;i--){
+    for(let i=ex.length-1;i>=0;i--){          // `ex` is rehab-only, so training never counts here
       if(ex[i].weight!=null && Math.abs(ex[i].weight-cur)<1e-9) since++; else break;
     }
   }
@@ -454,8 +590,37 @@ function derive(now){
   let state='ready';
   if(climbedToday) state='climb';        // the climbing rule outranks the clock
   else if(now<readyAt) state='waiting';
-  return {now,last,nextType,readyAt,climbedToday,target,cur,since,atTarget,dueIncrease,state,count:ex.length};
+  return {now,last,nextType,readyAt,climbedToday,target,cur,since,atTarget,dueIncrease,
+          state,count:ex.length,all,ex,tr};
 }
+function deriveTr(d){
+  const t=S.training, now=d.now, inc=S.settings.inc, bw=S.settings.bw;
+  const bridgeEnd = bw ? roundTo(bw*S.settings.bridgeEndPct/100, inc) : null;
+  const run=[];
+  for(let i=d.tr.length-1;i>=0;i--){
+    const x=d.tr[i];
+    if(x.tphase==='bridge' && x.weight!=null && t.load!=null && Math.abs(x.weight-t.load)<1e-9) run.unshift(x);
+    else break;
+  }
+  const painless=run.filter(x=>x.pain!=null && x.pain<=S.settings.painOk).length;
+  const sore    =run.filter(x=>x.pain!=null && x.pain> S.settings.painOk).length;
+  const unrated =run.filter(x=>x.pain==null).length;
+  const daysHere=run.length ? (now-run[0].ts)/DAY : 0;
+  // hold the RELATIVE step ~constant: +1 kg is 14% at 7 kg but only 3.7% at 27 kg
+  const step    =(t.load!=null && t.load>=25) ? 2 : 1;
+  const nextLoad=t.load!=null ? roundTo(t.load+step, inc) : null;
+  // pain is the gate; the 3-day floor stops 2x/day running the whole bridge in a week
+  const canAdvance=painless>=2 && daysHere>=3 && sore===0;
+  const readyToTest=t.load!=null && bridgeEnd!=null && t.load>=bridgeEnd-1e-9;
+  const blockDay=t.blockStart ? Math.floor((now-t.blockStart)/DAY)+1 : 0;
+  const blockDone=t.blockStart ? blockDay>BLOCK_DAYS : false;
+  const loadFor=id=>t.loads[id]!=null ? t.loads[id]
+                  : (t.max!=null ? roundTo(t.max*EX[id].pct, inc) : null);
+  const seeded =id=>t.loads[id]==null;
+  return {t,bridgeEnd,run,painless,sore,unrated,daysHere,step,nextLoad,canAdvance,
+          readyToTest,blockDay,blockDone,loadFor,seeded};
+}
+
 function syncPhase(){
   const d=derive();
   if(d.atTarget && !S.phase.targetReachedAt){ S.phase.targetReachedAt=Date.now(); save(); }
@@ -467,7 +632,11 @@ function render(){
   syncPhase();
   const d=derive();
   const st=$('#status');
-  $('#hDay').textContent = d.count ? '· session '+(d.count+1) : '';
+  const tr=isTr();
+  $('#modeName').textContent = tr ? 'Finger training' : 'Finger rehab';
+  ['#upnext','#pgCard','#rulesRehab'].forEach(k=>$(k).style.display = tr?'none':'');
+  ['#trPhaseCard','#trNextCard','#trProgCard','#rulesTrain'].forEach(k=>$(k).style.display = tr?'':'none');
+  $('#hDay').textContent = tr ? '' : (d.count ? 'session '+(d.count+1) : '');
 
   // status card
   let accent='var(--ok)', pill='Ready', big='Go now', sub='', pct=1;
@@ -501,7 +670,8 @@ function render(){
   const steps=ex.steps.slice();
   if(S.settings.hands!==1) steps.push('Then the <b>other hand</b>, while this one rests — <b>3 sets each</b>.');
   $('#nxSteps').innerHTML=steps.map(s=>'<li>'+s+'</li>').join('');
-  if(timer.type!==d.nextType && !timer.running && !timer.pinned) setTimerType(d.nextType);
+  const want = tr && S.training.phase==='block' ? BLOCK_IDS[0] : d.nextType;
+  if(timer.type!==want && !timer.running && !timer.pinned) setTimerType(want);
 
   // progress
   $('#pgTargetPct').textContent=S.settings.targetPct;
@@ -525,25 +695,113 @@ function render(){
   $('#btnClimb').style.opacity = d.climbedToday ? '1' : '.65';
   $('#btnClimb').style.borderColor = d.climbedToday ? 'var(--climb)' : 'var(--line)';
 
+  if(tr) renderTraining(d);
   renderAlerts(d);
   renderChart();
   renderHistory();
+}
+
+function renderTraining(d){
+  const T=deriveTr(d), t=T.t, bw=S.settings.bw;
+  const pct=v=>bw?(Math.round(v/bw*1000)/10+'% BW'):'';
+  const tag=$('#trPhaseTag');
+
+  if(t.phase==='block'){
+    tag.className='tag dynamic'; tag.textContent='Block';
+    $('#trPhaseVal').textContent='Day '+Math.min(T.blockDay,BLOCK_DAYS);
+    $('#trPhaseSub').textContent='of '+BLOCK_DAYS;
+    $('#trPhaseHint').innerHTML = t.max!=null
+      ? 'Max tested at <b>'+fmtKg(t.max)+'</b> on '+edgeLabel(t.edge)+
+        (t.maxAt?', '+dayLabel(t.maxAt).toLowerCase():'')+'. Working loads come off that number.'
+      : 'No max on record — log one so the app can set working loads.';
+    $('#trPhaseAct').innerHTML = T.blockDone
+      ? '<div style="margin-top:12px"><button class="btn primary" id="doRetest">Block done — retest max</button></div>' : '';
+  }else{
+    tag.className='tag static'; tag.textContent='Bridge';
+    $('#trPhaseVal').textContent=fmtKg(t.load);
+    $('#trPhaseSub').textContent=t.load!=null?pct(t.load):'';
+    if(T.readyToTest){
+      $('#trPhaseHint').innerHTML='End of the bridge at <b>'+fmtKg(T.bridgeEnd)+
+        '</b>. Test your max once the last sessions were painless.';
+      $('#trPhaseAct').innerHTML='<div style="margin-top:12px"><button class="btn primary" id="doTest">Log max test</button></div>';
+    }else{
+      let h='<b>'+T.painless+' of 2</b> painless sessions · <b>'+(Math.round(T.daysHere*10)/10)+' of 3</b> days at this load.';
+      if(T.sore) h+=' <span style="color:var(--bad)">A session above '+S.settings.painOk+
+        '/10 holds you here — that\u2019s the gate working.</span>';
+      else if(T.unrated) h+=' <span style="color:var(--warn)">'+T.unrated+' with no pain logged don\u2019t count.</span>';
+      $('#trPhaseHint').innerHTML=h;
+      $('#trPhaseAct').innerHTML = T.canAdvance
+        ? '<div style="margin-top:12px"><button class="btn primary" id="doStep">Step up to '+fmtKg(T.nextLoad)+'</button></div>' : '';
+    }
+  }
+  const bs=$('#doStep'); if(bs) bs.onclick=()=>{ S.training.load=T.nextLoad; save(); render(); };
+  const bt=$('#doTest')||$('#doRetest'); if(bt) bt.onclick=openMax;
+
+  const nb=$('#trNextBody');
+  if(t.phase==='block'){
+    const secs=BLOCK_IDS.reduce((a,id)=>a+EX[id].sets,0)*(EX.b_crimp4.work+EX.b_crimp4.rest);
+    let h='<p class="hint" style="margin:0 0 10px">10 s on / 50 s off · '+
+      (twoHand()?'alternating hands — the second trains inside the first\u2019s rest, so both hands fit in the same '
+               :'one hand · ')+'~'+Math.round(secs/60)+' min · on '+edgeLabel(t.edge)+'</p>';
+    BLOCK_IDS.forEach(id=>{
+      const ex=EX[id], L=T.loadFor(id);
+      h+='<div class="exrow"><div class="nm"><b>'+ex.name+'</b><span>'+ex.sets+' set'+(ex.sets>1?'s':'')+
+         ' · '+Math.round(ex.pct*100)+'% · '+ex.cue+'</span></div><div style="text-align:right">'+
+         '<div class="mono" style="font-weight:650">'+fmtKg(L)+'</div>'+
+         (T.seeded(id)&&L!=null?'<span class="seedwarn">estimate</span>':'')+'</div></div>';
+    });
+    if(BLOCK_IDS.some(T.seeded)) h+='<p class="hint">Loads marked <span class="seedwarn">estimate</span> are '+
+      'guesses off your half-crimp max. Every grip has its own lift-off max, so set these by feel the first '+
+      'time — the app keeps whatever you actually used.</p>';
+    nb.innerHTML=h;
+  }else{
+    const ex=EX[d.nextType];
+    nb.innerHTML='<div class="row" style="margin-bottom:12px"><span class="tag '+d.nextType+'">'+ex.name+
+      '</span><div style="flex:1"></div><div style="text-align:right"><div style="font-size:22px;font-weight:700" class="mono">'+
+      fmtKg(t.load)+'</div><div class="muted">'+edgeLabel(t.edge)+'</div></div></div>'+
+      '<ul class="steps">'+ex.steps.map(x=>'<li>'+x+'</li>').join('')+'</ul>';
+  }
+
+  $('#trProgTitle').textContent = t.phase==='block' ? 'Block progress' : 'Bridge progress';
+  const pb=$('#trProgBody');
+  if(t.phase==='block'){
+    const p=Math.min(1,Math.max(0,T.blockDay/BLOCK_DAYS));
+    pb.innerHTML='<div class="kv"><span>Block sessions logged</span><b class="mono">'+
+      d.tr.filter(x=>x.tphase==='block').length+'</b></div>'+
+      '<div class="kv"><span>Target this block</span><b class="mono">'+(BLOCK_DAYS*2)+'</b></div>'+
+      '<div class="bar" style="margin-top:14px;--accent:var(--wait)"><i style="width:'+(p*100)+'%"></i></div>'+
+      '<p class="hint">Day '+Math.min(T.blockDay,BLOCK_DAYS)+' of '+BLOCK_DAYS+'. Retest at the end and compare.</p>';
+  }else{
+    const start=bw?roundTo(bw*S.settings.targetPct/100,S.settings.inc):null;
+    let p=0;
+    if(start!=null&&T.bridgeEnd!=null&&t.load!=null&&T.bridgeEnd>start) p=(t.load-start)/(T.bridgeEnd-start);
+    p=Math.min(1,Math.max(0,p));
+    pb.innerHTML='<div class="kv"><span>Current load</span><b class="mono">'+fmtKg(t.load)+'</b></div>'+
+      '<div class="kv"><span>Next step</span><b class="mono">'+
+        (T.readyToTest?'max test':'+'+T.step+' kg → '+fmtKg(T.nextLoad))+'</b></div>'+
+      '<div class="kv"><span>Bridge ends at</span><b class="mono">'+fmtKg(T.bridgeEnd)+'</b></div>'+
+      '<div class="bar" style="margin-top:14px;--accent:var(--wait)"><i style="width:'+(p*100)+'%"></i></div>'+
+      '<p class="hint">'+(bw?'From '+fmtKg(start)+' (your rehab endpoint) to '+fmtKg(T.bridgeEnd)+' — then you test.'
+        :'Set your bodyweight to see targets.')+'</p>';
+  }
 }
 
 function renderAlerts(d){
   const box=$('#alerts'); let h='';
   if(!S.settings.bw) h+=al('warn','⚙','Finish setup','Tap the gear to enter your bodyweight and plate size.');
   const pt=painTrend();
-  if(d.dueIncrease){
+  const rehabOnly=!isTr();     // the bump prompt and the 30%-BW notes are rehab furniture
+  if(rehabOnly && d.dueIncrease){
     const next=Math.min(d.target ?? Infinity, roundTo(d.cur+S.settings.inc,S.settings.inc));
     h+=al(pt?'red':'warn', pt?'!':'▲', pt?'Weight is due — but check the pain trend':'Time to add weight',
       d.since+' sessions done at '+fmtKg(d.cur)+'. Next step is <b>'+fmtKg(next)+'</b>.'+
       (pt?'<br><br>'+pt+' Worth raising with your physio before you load it further.':'')+
       '<div style="margin-top:10px"><button class="btn warn" id="doBump" style="padding:11px">Bump to '+fmtKg(next)+'</button></div>');
-  } else if(pt){
+  }
+  if(pt && !(rehabOnly && d.dueIncrease)){
     h+=al('red','!','Pain is trending up', pt+' Nothing to change on your own — but mention it at your next physio visit.');
   }
-  if(S.phase.targetReachedAt){
+  if(rehabOnly && S.phase.targetReachedAt){
     const end=S.phase.targetReachedAt+30*DAY, left=end-Date.now();
     if(left>0){
       h+=al('green','🎉','30% bodyweight reached',
@@ -576,8 +834,14 @@ function renderHistory(){
     const dl=dayLabel(s.ts);
     if(dl!==day){ day=dl; h+='<div class="daysep">'+dl+'</div><ul class="hist">'; }
     const tag=s.type==='climb'?'<span class="tag climb">Climb</span>'
+      : s.tphase==='test'?'<span class="tag test">Max</span>'
+      : s.type==='block'?'<span class="tag dynamic">Block</span>'
       :'<span class="tag '+s.type+'">'+EX[s.type].name+'</span>';
-    const meta=s.type==='climb'?'climbing day':fmtKg(s.weight)+' · '+(s.sets||3)+' sets';
+    const edg=(s.edge!=null&&s.edge!==20)?' · '+s.edge+' mm':'';
+    const meta=s.type==='climb'?'climbing day'
+      : s.type==='block'?(Object.keys(s.ex||{}).length+' exercises'+(s.weight!=null?' · '+fmtKg(s.weight)+' main':'')+edg)
+      : s.tphase==='test'?('max test · '+fmtKg(s.weight)+edg)
+      : fmtKg(s.weight)+' · '+(s.sets||3)+' sets'+edg;
     const pb=s.pain!=null?'<span class="painbadge">'+s.pain+'</span>':'';
     h+='<li>'+tag+'<div class="grow"><div>'+meta+'</div>'+
        (s.note?'<div class="note">'+esc(s.note)+'</div>':'')+'</div>'+pb+
@@ -602,7 +866,10 @@ let chartN=30, hoverIdx=null;
 const VW=340, PX0=30, PX1=334, LT=16, LB=92, PT=116, PB=168;
 
 function chartRows(){
-  const all=[...S.sessions].sort((a,b)=>a.ts-b.ts);
+  // loads aren't comparable across programmes, so the chart follows the mode you're in
+  // (climb days show in both — a climbing day is a climbing day)
+  const all=[...S.sessions].filter(x=>x.type==='climb'||(x.mode||'rehab')===S.mode)
+                           .sort((a,b)=>a.ts-b.ts);
   return chartN>0 ? all.slice(-chartN) : all;
 }
 function renderChart(){
@@ -616,7 +883,8 @@ function renderChart(){
   const xAt=i=>PX0+(i+0.5)*slot;
 
   // --- load domain ---
-  const lp=rows.map((r,i)=>({i,w:(r.type!=='climb'&&r.weight!=null)?r.weight:null})).filter(o=>o.w!=null);
+  const lp=rows.map((r,i)=>({i,w:(r.type!=='climb'&&r.tphase!=='test'&&r.weight!=null)?r.weight:null}))
+               .filter(o=>o.w!=null);
   let lo=0,hi=1;
   if(lp.length){
     lo=Math.min(...lp.map(o=>o.w)); hi=Math.max(...lp.map(o=>o.w));
@@ -661,8 +929,12 @@ function renderChart(){
   g+=txt(PX0-6,yP(10)+4,'10','end',10,'var(--tx3)');
   g+=txt(PX0-6,yP(0)+4,'0','end',10,'var(--tx3)');
   // climbing days: a tick under the baseline, so a gap reads as deliberate
-  rows.forEach((r,i)=>{ if(r.type==='climb')
-    g+='<rect x="'+(xAt(i)-2.5)+'" y="'+(PB+3)+'" width="5" height="3" rx="1.5" fill="var(--climb)"/>'; });
+  rows.forEach((r,i)=>{
+    if(r.type==='climb')
+      g+='<rect x="'+(xAt(i)-2.5)+'" y="'+(PB+3)+'" width="5" height="3" rx="1.5" fill="var(--climb)"/>';
+    if(r.tphase==='test')
+      g+='<rect x="'+(xAt(i)-2.5)+'" y="'+(PB+3)+'" width="5" height="3" rx="1.5" fill="var(--warn)"/>';
+  });
 
   // panel titles + x labels (text tokens only, never the series colour)
   g+=txt(PX0-24,10,'LOAD','start',9,'var(--tx3)',700)+txt(PX0-24,110,'PAIN','start',9,'var(--tx3)',700);
@@ -690,7 +962,7 @@ function barPath(x,y,w,h){
 }
 const rnd=v=>(Math.round(v*10)/10).toString().replace(/\.0$/,'');
 function summary(rows){
-  const ex=rows.filter(r=>r.type!=='climb'&&r.weight!=null);
+  const ex=rows.filter(r=>r.type!=='climb'&&r.tphase!=='test'&&r.weight!=null);
   const pn=rows.filter(r=>r.pain!=null);
   let h='<span><i class="swatch" style="background:var(--load-line)"></i>';
   h+= ex.length? '<b>'+fmtKg(ex[0].weight)+' → '+fmtKg(ex[ex.length-1].weight)+'</b>' : 'no load yet';
@@ -713,7 +985,8 @@ function bindChart(svg,rows,slot,xAt,yL,lo,hi){
     if(r.type!=='climb'&&r.weight!=null){
       dot.setAttribute('cx',x); dot.setAttribute('cy',yL(r.weight)); dot.setAttribute('opacity','1');
     } else dot.setAttribute('opacity','0');
-    const what=r.type==='climb'?'Climbing day':EX[r.type].name;
+    const what=r.type==='climb'?'Climbing day':r.type==='block'?'Block session'
+              :r.tphase==='test'?'Max test':EX[r.type].name;
     let h='<b>'+esc(what)+'</b> · '+dayLabel(r.ts).toLowerCase()+' '+clock(r.ts);
     if(r.type!=='climb'&&r.weight!=null) h+=' · '+fmtKg(r.weight);
     h+=' · pain '+(r.pain==null?'—':'<b>'+r.pain+'</b>');
@@ -730,7 +1003,7 @@ $$('#chartRange button').forEach(b=>b.onclick=()=>{ chartN=+b.dataset.n; renderC
 
 /* pain trend — advisory only, never a dosing instruction */
 function painTrend(){
-  const rated=exSessions().filter(s=>s.pain!=null);
+  const rated=allEx().filter(s=>(s.mode||'rehab')===S.mode && s.pain!=null);
   if(rated.length<3) return null;
   const last3=rated.slice(-3), prev3=rated.slice(-6,-3);
   const mean=a=>a.reduce((x,y)=>x+y.pain,0)/a.length;
@@ -768,28 +1041,73 @@ function paintPain(){
     ? 'Not logged — this session will be a gap in the trend.'
     : (logPain===0?'No pain.':logPain<=3?'Mild.':logPain<=6?'Moderate — worth watching.':'High — tell your physio.');
 }
-function openLog(type){
+/* the header title is the programme switch */
+$('#modeSw').onclick=()=>{
+  $$('#modeScrim .modeopt').forEach(b=>b.classList.toggle('on',b.dataset.m===S.mode));
   const d=derive();
-  setLogType(type || (timer.pinned? timer.type : d.nextType));   // default to what you actually trained
-  $('#logWeight').value = d.cur!=null? Math.round(d.cur*100)/100 : '';
+  $('#modeWarn').innerHTML = (!d.atTarget && d.target!=null)
+    ? '⚠︎ The rehab block isn\u2019t finished ('+fmtKg(d.cur)+' of '+fmtKg(d.target)+
+      '). Training mode assumes you\u2019ve been discharged — that\u2019s a conversation with your physio, not a setting.'
+    : '';
+  open($('#modeScrim'));
+};
+$$('#modeScrim .modeopt').forEach(b=>b.onclick=()=>{
+  S.mode = b.dataset.m==='training' ? 'training' : 'rehab';
+  if(S.mode==='training' && S.training.load==null)      // the bridge starts where rehab finished
+    S.training.load = S.weight.current!=null ? S.weight.current
+      : (S.settings.bw ? roundTo(S.settings.bw*S.settings.targetPct/100,S.settings.inc) : null);
+  timer.pinned=false;
+  save(); close($('#modeScrim')); resetTimer(); render();
+});
+
+function fillEdges(sel,val){
+  sel.innerHTML=EDGES.map(e=>'<option value="'+e.mm+'">'+edgeLabel(e.mm)+'</option>').join('');
+  sel.value=val;
+}
+function buildBlockRows(T){
+  $('#blockFields').innerHTML='<label>Exercises</label>'+BLOCK_IDS.map(id=>{
+    const ex=EX[id], L=T.loadFor(id);
+    return '<div class="exrow" data-ex="'+id+'"><div class="nm"><b>'+ex.short+'</b><span>'+ex.sets+
+      '× · '+ex.cue+'</span></div><input type="number" step="0.5" inputmode="decimal" value="'+
+      (L!=null?Math.round(L*100)/100:'')+'"><button type="button" class="tick on" aria-label="done">✓</button></div>';
+  }).join('')+'<p class="hint">Untick anything you skipped. The weights you save become the remembered loads.</p>';
+  $$('#blockFields .tick').forEach(b=>b.onclick=()=>b.classList.toggle('on'));
+}
+function openLog(type){
+  const d=derive(), tr=isTr();
+  const T=tr?deriveTr(d):null;
+  const block = tr && S.training.phase==='block';
+  const opts = block ? [['block','Block'],['climb','Climb']]
+                     : [['static','Static'],['dynamic','Dynamic'],['climb','Climb']];
+  $('#logType').innerHTML=opts.map(o=>'<button data-v="'+o[0]+'">'+o[1]+'</button>').join('');
+  $$('#logType button').forEach(b=>b.onclick=()=>setLogType(b.dataset.v));
+  if(tr) fillEdges($('#logEdge'), S.training.edge);
+  if(block) buildBlockRows(T); else $('#blockFields').innerHTML='';
+  const w = tr ? S.training.load : d.cur;
+  $('#logWeight').value = w!=null? Math.round(w*100)/100 : '';
   $('#logSets').value='3';
   $('#logWhen').value=toLocalInput(Date.now());
   $('#logNote').value='';
   logPain=null; paintPain();
+  // still defaults to what you actually trained, per the pinned override
+  setLogType(type || (block?'block' : (timer.pinned && EX[timer.type] && !EX[timer.type].block)? timer.type : d.nextType));
   open($('#logScrim'));
 }
 function setLogType(t){
-  if(t!=='climb' && !EX[t]) t='static';
+  if(t!=='climb' && t!=='block' && !EX[t]) t='static';
   logType=t;
   $$('#logType button').forEach(b=>b.classList.toggle('on',b.dataset.v===t));
-  const climb = t==='climb';
-  $('#loadFields').style.display = climb?'none':'';
-  $('#setsField').style.display  = climb?'none':'';
+  const climb=t==='climb', block=t==='block';
+  $('#loadFields').style.display  = (climb||block)?'none':'';
+  $('#setsField').style.display   = (climb||block)?'none':'';
+  $('#blockFields').style.display = block?'':'none';
+  $('#edgeField').style.display   = (isTr()&&!climb)?'':'none';
   const d=derive();
   $('#logTypeHint').innerHTML = climb
-    ? 'Climbing day — no rehab session today. Max 1 h with H-taping. This does not count toward the weight bump.'
+    ? 'Climbing day — no session today. Max 1 h with H-taping. This never counts toward a progression step.'
+    : block ? '10 s on / 50 s off, all six exercises.'
     : t===d.nextType ? 'Alternating correctly.'
-    : '⚠︎ You did <b>'+EX[t].name.toLowerCase()+'</b> last time too — the physio wants them alternated.';
+    : '⚠︎ You did <b>'+EX[t].name.toLowerCase()+'</b> last time too — these want alternating.';
 }
 $$('#logType button').forEach(b=>b.onclick=()=>setLogType(b.dataset.v));
 $('#wMinus').onclick=()=>nudge(-1); $('#wPlus').onclick=()=>nudge(1);
@@ -801,13 +1119,32 @@ $('#btnLog').onclick=()=>openLog();   // wrap: a bare handler would pass the Eve
 $('#logSave').onclick=()=>{
   const when=$('#logWhen').value? new Date($('#logWhen').value).getTime() : Date.now();
   const note=$('#logNote').value.trim();
+  const tr=isTr(), edge = tr ? +$('#logEdge').value : 20;
   if(logType==='climb'){
     // one climb entry per day
     S.sessions=S.sessions.filter(x=>!(x.type==='climb'&&startOfDay(x.ts)===startOfDay(when)));
-    S.sessions.push({id:uid(),ts:when,type:'climb',pain:logPain,note});
+    S.sessions.push({id:uid(),ts:when,mode:S.mode,type:'climb',edge,pain:logPain,note});
+  }else if(logType==='block'){
+    const exd={};
+    $$('#blockFields .exrow').forEach(r=>{
+      if(!r.querySelector('.tick').classList.contains('on')) return;
+      const v=parseFloat(r.querySelector('input').value);
+      if(!isNaN(v)) exd[r.dataset.ex]=v;
+    });
+    Object.assign(S.training.loads,exd);       // remember what was actually used
+    S.training.edge=edge;
+    S.sessions.push({id:uid(),ts:when,mode:'training',tphase:'block',type:'block',
+      weight:exd.b_crimp4!=null?exd.b_crimp4:null, edge, pain:logPain, note, ex:exd});
+  }else if(tr){
+    const wv=parseFloat($('#logWeight').value);
+    const w=isNaN(wv)?S.training.load:wv;
+    S.training.edge=edge; S.training.load=w;
+    S.sessions.push({id:uid(),ts:when,mode:'training',tphase:'bridge',type:logType,
+      weight:w, edge, sets:parseInt($('#logSets').value,10)||3, pain:logPain, note});
   }else{
     const wv=parseFloat($('#logWeight').value);
-    S.sessions.push({id:uid(),ts:when,type:logType,weight:isNaN(wv)?S.weight.current:wv,
+    S.sessions.push({id:uid(),ts:when,mode:'rehab',type:logType,edge:20,
+      weight:isNaN(wv)?S.weight.current:wv,
       sets:parseInt($('#logSets').value,10)||3, pain:logPain, note});
     if(!isNaN(wv) && wv!==S.weight.current){ S.weight.current=wv; S.weight.setAt=when-1; }
   }
@@ -819,10 +1156,44 @@ $('#btnClimb').onclick=()=>{
   const today=startOfDay(Date.now());
   const ex=S.sessions.find(s=>s.type==='climb'&&startOfDay(s.ts)===today);
   if(ex){ S.sessions=S.sessions.filter(s=>s.id!==ex.id); }
-  else { S.sessions.push({id:uid(),ts:Date.now(),type:'climb'}); }
+  else { S.sessions.push({id:uid(),ts:Date.now(),mode:S.mode,type:'climb',edge:20}); }
   save(); render();
 };
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
+
+/* max test */
+let maxPain=null;
+(function(){
+  const box=$('#maxPain');
+  box.innerHTML=Array.from({length:11},(_,i)=>'<button type="button" data-p="'+i+'">'+i+'</button>').join('');
+  box.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    const v=+b.dataset.p; maxPain=(maxPain===v)?null:v; paintMaxPain();
+  });
+})();
+function paintMaxPain(){
+  $$('#maxPain button').forEach(b=>b.classList.toggle('on',maxPain!==null&&+b.dataset.p===maxPain));
+  $('#maxHint').textContent = maxPain===null ? 'Log it — a max test is exactly when pain matters most.'
+    : maxPain<=2 ? 'Fine. Working loads will come off this number.'
+    : 'Above '+S.settings.painOk+'/10 on a max test is a reason to stop and talk to your physio, not to start a block.';
+}
+function openMax(){
+  maxPain=null; paintMaxPain();
+  $('#maxKg').value = S.training.max!=null?S.training.max:'';
+  fillEdges($('#maxEdge'), S.training.edge);
+  open($('#maxScrim'));
+}
+$('#maxSave').onclick=()=>{
+  const kg=parseFloat($('#maxKg').value);
+  if(isNaN(kg)||kg<=0){ $('#maxHint').textContent='Enter the weight you held.'; return; }
+  const now=Date.now();
+  S.training.max=kg; S.training.maxAt=now; S.training.edge=+$('#maxEdge').value;
+  S.training.phase='block'; S.training.blockStart=now;
+  S.training.loads={};                      // reseed working loads off the new max
+  S.sessions.push({id:uid(),ts:now,mode:'training',tphase:'test',type:'static',
+    weight:kg,edge:S.training.edge,sets:1,pain:maxPain,note:''});
+  timer.pinned=false;
+  save(); close($('#maxScrim')); resetTimer(); render();
+};
 
 /* settings */
 $('#btnSettings').onclick=openSettings;
@@ -831,6 +1202,7 @@ function openSettings(first){
   $('#sBw').value=s.bw??''; $('#sInc').value=s.inc; $('#sCur').value=S.weight.current??'';
   $('#sHours').value=s.minHours; $('#sPer').value=s.perIncrease;
   $('#sStart').value=s.startPct; $('#sTarget').value=s.targetPct;
+  $('#sPainOk').value=s.painOk; $('#sBridge').value=s.bridgeEndPct;
   $('#sHand').value=s.firstHand; $('#sSwitch').value=s.switchSec;
   updHandHint();
   $('#setTitle').textContent=first?'Set up':'Settings';
@@ -861,6 +1233,8 @@ $('#sSave').onclick=()=>{
   s.perIncrease=Math.max(1,parseInt($('#sPer').value,10)||4);
   s.startPct=parseFloat($('#sStart').value)||10;
   s.targetPct=parseFloat($('#sTarget').value)||30;
+  s.painOk=Math.max(0,Math.min(10,parseInt($('#sPainOk').value,10)||0));
+  s.bridgeEndPct=parseFloat($('#sBridge').value)||48;
   s.firstHand=$('#sHand').value==='right'?'right':'left';
   s.switchSec=Math.min(60,Math.max(0,parseInt($('#sSwitch').value,10)||0));
   const c=parseFloat($('#sCur').value);
@@ -905,7 +1279,7 @@ $('#sWipe').onclick=()=>{
 /* `pinned` = the user chose an exercise by hand, so the rotation stops overriding the
    timer. Not persisted: it is an override for right now, cleared when a session is logged. */
 const timer={type:'static',pinned:false,running:false,phase:'idle',set:1,hand:0,left:0,endAt:0,
-             rep:1,dir:'UP',cd:null,wake:null};
+             rep:1,dir:'UP',cd:null,wake:null,queue:['static'],qi:0};
 const twoHand=()=>S.settings.hands!==1;
 const switchSec=()=>Math.max(0,+S.settings.switchSec||0);
 const handName=i=>{
@@ -917,19 +1291,29 @@ function restGap(ex){
   if(!twoHand()) return ex.rest;
   return Math.max(10, ex.rest - ex.work - switchSec());
 }
-function setTimerType(t){ timer.type=t; resetTimer(); }
+/* A block session is just a queue of exercises fed through the same machine:
+   each one runs its own sets (and hands), then the rest rolls into the next. */
+function setTimerType(t){
+  timer.queue = (EX[t]&&EX[t].block) ? BLOCK_IDS.slice() : [t];
+  timer.qi = Math.max(0,timer.queue.indexOf(t));
+  timer.type = t;
+  resetTimer();
+}
 function resetTimer(){
+  if(timer.queue && timer.queue.length>1){ timer.qi=0; timer.type=timer.queue[0]; }
   const ex=EX[timer.type];
   Object.assign(timer,{running:false,phase:'idle',set:1,hand:0,left:ex.work,rep:1,dir:'UP',cd:null});
   releaseWake(); paintTimer();
 }
+const inBlock=()=>!!(EX[timer.type]&&EX[timer.type].block);
+const blockLoad=id=>{ try{ return deriveTr(derive()).loadFor(id); }catch(e){ return null; } };
 function paintTimer(){
   const ex=EX[timer.type], two=twoHand(), ph=timer.phase;
   const card=$('#tmrCard');
   card.style.setProperty('--accent', ph==='rest'?'var(--wait)':ph==='switch'?'var(--warn)':'var(--ok)');
   let head;
   if(ph==='done') head='Finished';
-  else if(ph==='idle') head=ex.name+' · ready';
+  else if(ph==='idle') head=(ex.block?'Block session':ex.name)+' · ready';
   else if(ph==='work') head='Set '+timer.set+' — go';
   else if(ph==='switch') head='Switch hands';
   else head='Rest — set '+timer.set+' next';
@@ -948,13 +1332,23 @@ function paintTimer(){
     cue.style.color = timer.dir==='UP'?'var(--ok)':'var(--wait)'; }
   else cue.style.display='none';
 
-  const work=ex.reps? ex.reps+' reps of 3 s up / 3 s down':'30 s hold';
-  $('#tmrSub').textContent = ph==='done' ? 'All '+ex.sets+' sets done'+(two?' on each hand':'')+' — log it below.'
-    : ph==='idle' ? ex.sets+' sets'+(two?' per hand':'')+' · '+work+' · 2 min rest'+(two?' per hand':'')
-    : 'Set '+timer.set+' of '+ex.sets+(two?' · '+handName(timer.hand)+' hand':'');
+  const work=ex.reps? ex.reps+' reps of 3 s up / 3 s down': ex.work+' s hold';
+  if(ex.block){
+    const n=BLOCK_IDS.reduce((a,id)=>a+EX[id].sets,0), L=blockLoad(timer.type);
+    $('#tmrSub').textContent = ph==='done' ? 'All six exercises done'+(two?' on both hands':'')+' — log it below.'
+      : ph==='idle' ? n+' sets · '+work+' / '+fmtSecs(ex.rest)+' off · ~'+Math.round(n*(ex.work+ex.rest)/60)+' min'
+      : ex.short+' · set '+timer.set+' of '+ex.sets+(L!=null?' · '+fmtKg(L):'')+
+        (two?' · '+handName(timer.hand)+' hand':'');
+  }else{
+    $('#tmrSub').textContent = ph==='done' ? 'All '+ex.sets+' sets done'+(two?' on each hand':'')+' — log it below.'
+      : ph==='idle' ? ex.sets+' sets'+(two?' per hand':'')+' · '+work+' · '+fmtSecs(ex.rest)+' rest'+(two?' per hand':'')
+      : 'Set '+timer.set+' of '+ex.sets+(two?' · '+handName(timer.hand)+' hand':'');
+  }
   $('#tmrGo').textContent = timer.running?'Pause':(ph==='idle'||ph==='done'?'Start':'Resume');
   $$('#tmrHands button').forEach(b=>{ b.classList.toggle('on', (+b.dataset.h===2)===two); b.disabled=timer.running; });
-  const off=timer.type!==derive().nextType;
+  // the static/dynamic rotation doesn't apply inside a block, so nothing is "out of turn" there
+  const off = !ex.block && timer.type!==derive().nextType;
+  $('#tmrType').style.display = ex.block?'none':'';
   $$('#tmrType button').forEach(b=>{
     const sel=b.dataset.t===timer.type;
     b.classList.toggle('on',sel); b.classList.toggle('off',sel&&off); b.disabled=timer.running;
@@ -1014,12 +1408,17 @@ function tickTimer(){
         if(switchSec()>0){ advance('switch',switchSec()); beep(740,.15); }
         else{ timer.hand=1; timer.rep=1; timer.dir='UP'; advance('work',ex.work); beep(880,.25); }
       }
-      else if(timer.set>=ex.sets){ timer.phase='done'; timer.running=false; timer.left=0; releaseWake(); beep(1046,.5); }
+      else if(timer.set>=ex.sets && timer.qi>=(timer.queue?timer.queue.length:1)-1){
+        timer.phase='done'; timer.running=false; timer.left=0; releaseWake(); beep(1046,.5); }
       else{ advance('rest',restGap(ex)); beep(523,.3); }
     }else if(timer.phase==='switch'){
       timer.hand=1; timer.rep=1; timer.dir='UP'; advance('work',ex.work); beep(880,.25);
     }else{
-      timer.set++; timer.hand=0; timer.rep=1; timer.dir='UP'; advance('work',ex.work); beep(880,.25);
+      if(timer.set>=ex.sets){            // this exercise is done — roll into the next in the queue
+        timer.qi++; timer.type=timer.queue[timer.qi]; timer.set=1;
+      } else timer.set++;
+      const nx=EX[timer.type];
+      timer.hand=0; timer.rep=1; timer.dir='UP'; advance('work',nx.work); beep(880,.25);
     }
   }
   paintTimer();
@@ -1079,8 +1478,8 @@ if(!S.settings.bw) openSettings(true);
 if('serviceWorker' in navigator && location.protocol==='https:')
   navigator.serviceWorker.register('./sw.js').catch(()=>{});
 
-window.__rehab={get S(){return S},set S(v){S=v},derive,render,save,load:()=>{S=load();},KEY,
-                timer,tickTimer,resetTimer,restGap,EX,COUNTIN,
+window.__rehab={get S(){return S},set S(v){S=v},derive,deriveTr,render,save,load:()=>{S=load();},KEY,
+                timer,tickTimer,resetTimer,restGap,EX,COUNTIN,BLOCK_IDS,isTr,
                 set onBeep(f){ onBeep=f; }};
 })();
 </script>

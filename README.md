@@ -5,6 +5,31 @@ next session is due, which exercise it is, what load to use, and when to add wei
 
 Built for the phone. No account, no server — everything lives in your browser.
 
+## Two programmes
+
+The title in the top-left is a switch.
+
+**Finger rehab** — your physio's protocol. Static / dynamic alternating, 6 h apart,
++1 kg every 4 sessions, 10% → 30% bodyweight, then the H-tape decision.
+
+**Finger training** — life after discharge, in three phases:
+
+1. **Bridge** — a faster ladder off the rehab endpoint. +1 kg below 25 kg, +2 kg above,
+   which keeps the *relative* step roughly constant (a fixed +1 kg is a 14 % jump at 7 kg
+   but only 3.7 % at 27 kg). A step unlocks after **2 painless sessions and at least 3 days**
+   at that load — pain is the gate, and the 3-day floor stops 2×/day from running the whole
+   bridge in a week.
+2. **Max test** — one hand, 7–10 s, on the edge you trained on.
+3. **Abrahamsson block** — 30 days, 2× daily, 10 s on / 50 s off, all six exercises.
+   Working loads are **% of your tested max**, not % of bodyweight.
+
+The block reuses the alternating-hands timer, so the second hand trains inside the first
+hand's rest: rest becomes 50 − 10 − 5 = 35 s, each hand still gets its full 50 s between
+its own sets, and **both hands fit in the same ~10 minutes** one hand would have taken.
+
+Session spacing is global — the 6 h rule reads both programmes, because your fingers
+don't know which mode the app is in.
+
 ## What it does
 
 - **Ready / resting** — a live countdown to the next allowed session (default 6 h gap).
@@ -23,6 +48,9 @@ Built for the phone. No account, no server — everything lives in your browser.
 - **Pain advisory** — if pain averages ≥5 over your last three sessions, or jumps by
   1.5 against the previous three, the app says so and tells you to raise it with your
   physio. It never tells you to change the load on your own.
+- **Edge tracking** — every training session records which edge (28/23/20/18/15/11/7 mm).
+  Recorded alongside the load, never converted into it: a 7 mm edge at bodyweight is not
+  "20 mm + X kg", and nothing here pretends otherwise.
 - **Backup** — export/import your history as JSON from Settings.
 
 ## Deploy to GitHub Pages
