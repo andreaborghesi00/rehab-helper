@@ -614,8 +614,14 @@ function deriveTr(d){
   const readyToTest=t.load!=null && bridgeEnd!=null && t.load>=bridgeEnd-1e-9;
   const blockDay=t.blockStart ? Math.floor((now-t.blockStart)/DAY)+1 : 0;
   const blockDone=t.blockStart ? blockDay>BLOCK_DAYS : false;
-  const loadFor=id=>t.loads[id]!=null ? t.loads[id]
-                  : (t.max!=null ? roundTo(t.max*EX[id].pct, inc) : null);
+  // Both phases run the same six exercises; only the reference load differs.
+  // Block: % of the tested max. Bridge: the ladder IS the main lift's load, and the
+  // other five scale by the protocol's own relative intensities (80/80/55/55/35/35).
+  const MAIN_PCT=EX[BLOCK_IDS[0]].pct;
+  const seedFor=id => t.phase==='block'
+    ? (t.max!=null ? roundTo(t.max*EX[id].pct, inc) : null)
+    : (t.load!=null ? roundTo(t.load*EX[id].pct/MAIN_PCT, inc) : null);
+  const loadFor=id=>t.loads[id]!=null ? t.loads[id] : seedFor(id);
   const seeded =id=>t.loads[id]==null;
   return {t,bridgeEnd,run,painless,sore,unrated,daysHere,step,nextLoad,canAdvance,
           readyToTest,blockDay,blockDone,loadFor,seeded};
@@ -670,7 +676,7 @@ function render(){
   const steps=ex.steps.slice();
   if(S.settings.hands!==1) steps.push('Then the <b>other hand</b>, while this one rests — <b>3 sets each</b>.');
   $('#nxSteps').innerHTML=steps.map(s=>'<li>'+s+'</li>').join('');
-  const want = tr && S.training.phase==='block' ? BLOCK_IDS[0] : d.nextType;
+  const want = tr ? BLOCK_IDS[0] : d.nextType;   // training mode is always the six exercises
   if(timer.type!==want && !timer.running && !timer.pinned) setTimerType(want);
 
   // progress
@@ -715,52 +721,56 @@ function renderTraining(d){
         (t.maxAt?', '+dayLabel(t.maxAt).toLowerCase():'')+'. Working loads come off that number.'
       : 'No max on record — log one so the app can set working loads.';
     $('#trPhaseAct').innerHTML = T.blockDone
-      ? '<div style="margin-top:12px"><button class="btn primary" id="doRetest">Block done — retest max</button></div>' : '';
+      ? '<div style="margin-top:12px"><button class="btn primary" data-max>Block done — retest max</button></div>' : '';
   }else{
     tag.className='tag static'; tag.textContent='Bridge';
     $('#trPhaseVal').textContent=fmtKg(t.load);
     $('#trPhaseSub').textContent=t.load!=null?pct(t.load):'';
+    let hh, act='';
     if(T.readyToTest){
-      $('#trPhaseHint').innerHTML='End of the bridge at <b>'+fmtKg(T.bridgeEnd)+
-        '</b>. Test your max once the last sessions were painless.';
-      $('#trPhaseAct').innerHTML='<div style="margin-top:12px"><button class="btn primary" id="doTest">Log max test</button></div>';
+      hh='End of the bridge at <b>'+fmtKg(T.bridgeEnd)+'</b>. Test your max once the last sessions were painless.';
+      act='<button class="btn primary" data-max>Log max test</button>';
     }else{
-      let h='<b>'+T.painless+' of 2</b> painless sessions · <b>'+(Math.round(T.daysHere*10)/10)+' of 3</b> days at this load.';
-      if(T.sore) h+=' <span style="color:var(--bad)">A session above '+S.settings.painOk+
+      hh='<b>'+T.painless+' of 2</b> painless sessions · <b>'+(Math.round(T.daysHere*10)/10)+' of 3</b> days at this load.';
+      if(T.sore) hh+=' <span style="color:var(--bad)">A session above '+S.settings.painOk+
         '/10 holds you here — that\u2019s the gate working.</span>';
-      else if(T.unrated) h+=' <span style="color:var(--warn)">'+T.unrated+' with no pain logged don\u2019t count.</span>';
-      $('#trPhaseHint').innerHTML=h;
-      $('#trPhaseAct').innerHTML = T.canAdvance
-        ? '<div style="margin-top:12px"><button class="btn primary" id="doStep">Step up to '+fmtKg(T.nextLoad)+'</button></div>' : '';
+      else if(T.unrated) hh+=' <span style="color:var(--warn)">'+T.unrated+' with no pain logged don\u2019t count.</span>';
+      if(T.canAdvance) act='<button class="btn primary" id="doStep">Step up to '+fmtKg(T.nextLoad)+'</button>';
+      // the test is always reachable — waiting for the bridge end was the only way in
+      act+='<button class="btn ghost" data-max>Test max &amp; start block</button>';
     }
+    $('#trPhaseHint').innerHTML=hh;
+    $('#trPhaseAct').innerHTML='<div class="btns" style="margin-top:12px">'+act+'</div>';
   }
-  const bs=$('#doStep'); if(bs) bs.onclick=()=>{ S.training.load=T.nextLoad; save(); render(); };
-  const bt=$('#doTest')||$('#doRetest'); if(bt) bt.onclick=openMax;
+  const bs=$('#doStep'); if(bs) bs.onclick=()=>{
+    const prev=S.training.load, nw=T.nextLoad;
+    if(prev>0){                       // carry hand-tuned per-exercise loads up in proportion
+      const k=nw/prev;
+      Object.keys(S.training.loads).forEach(id=>{
+        S.training.loads[id]=roundTo(S.training.loads[id]*k, S.settings.inc);
+      });
+    }
+    S.training.load=nw; save(); render();
+  };
+  $$('#trPhaseAct [data-max]').forEach(b=>b.onclick=openMax);
 
   const nb=$('#trNextBody');
-  if(t.phase==='block'){
-    const secs=BLOCK_IDS.reduce((a,id)=>a+EX[id].sets,0)*(EX.b_crimp4.work+EX.b_crimp4.rest);
-    let h='<p class="hint" style="margin:0 0 10px">10 s on / 50 s off · '+
-      (twoHand()?'alternating hands — the second trains inside the first\u2019s rest, so both hands fit in the same '
-               :'one hand · ')+'~'+Math.round(secs/60)+' min · on '+edgeLabel(t.edge)+'</p>';
-    BLOCK_IDS.forEach(id=>{
-      const ex=EX[id], L=T.loadFor(id);
-      h+='<div class="exrow"><div class="nm"><b>'+ex.name+'</b><span>'+ex.sets+' set'+(ex.sets>1?'s':'')+
-         ' · '+Math.round(ex.pct*100)+'% · '+ex.cue+'</span></div><div style="text-align:right">'+
-         '<div class="mono" style="font-weight:650">'+fmtKg(L)+'</div>'+
-         (T.seeded(id)&&L!=null?'<span class="seedwarn">estimate</span>':'')+'</div></div>';
-    });
-    if(BLOCK_IDS.some(T.seeded)) h+='<p class="hint">Loads marked <span class="seedwarn">estimate</span> are '+
-      'guesses off your half-crimp max. Every grip has its own lift-off max, so set these by feel the first '+
-      'time — the app keeps whatever you actually used.</p>';
-    nb.innerHTML=h;
-  }else{
-    const ex=EX[d.nextType];
-    nb.innerHTML='<div class="row" style="margin-bottom:12px"><span class="tag '+d.nextType+'">'+ex.name+
-      '</span><div style="flex:1"></div><div style="text-align:right"><div style="font-size:22px;font-weight:700" class="mono">'+
-      fmtKg(t.load)+'</div><div class="muted">'+edgeLabel(t.edge)+'</div></div></div>'+
-      '<ul class="steps">'+ex.steps.map(x=>'<li>'+x+'</li>').join('')+'</ul>';
-  }
+  const secs=BLOCK_IDS.reduce((a,id)=>a+EX[id].sets,0)*(EX[BLOCK_IDS[0]].work+EX[BLOCK_IDS[0]].rest);
+  let bh='<p class="hint" style="margin:0 0 10px">10 s on / 50 s off · '+
+    (twoHand()?'alternating hands — the second trains inside the first\u2019s rest, so both fit in the same '
+             :'one hand · ')+'~'+Math.round(secs/60)+' min · on '+edgeLabel(t.edge)+'</p>';
+  BLOCK_IDS.forEach(id=>{
+    const ex=EX[id], L=T.loadFor(id);
+    bh+='<div class="exrow"><div class="nm"><b>'+ex.name+'</b><span>'+ex.sets+' set'+(ex.sets>1?'s':'')+
+       ' · '+Math.round(ex.pct*100)+'% · '+ex.cue+'</span></div><div style="text-align:right">'+
+       '<div class="mono" style="font-weight:650">'+fmtKg(L)+'</div>'+
+       (T.seeded(id)&&L!=null?'<span class="seedwarn">estimate</span>':'')+'</div></div>';
+  });
+  if(BLOCK_IDS.some(T.seeded)) bh+='<p class="hint">Loads marked <span class="seedwarn">estimate</span> are scaled off '+
+    (t.phase==='block'?'your tested max':'your bridge load, which is the four-finger figure')+
+    '. Every grip has its own lift-off max, so set these by feel the first time — the app keeps what you '+
+    'actually used, and carries it up when the bridge steps.</p>';
+  nb.innerHTML=bh;
 
   $('#trProgTitle').textContent = t.phase==='block' ? 'Block progress' : 'Bridge progress';
   const pb=$('#trProgBody');
@@ -776,7 +786,7 @@ function renderTraining(d){
     let p=0;
     if(start!=null&&T.bridgeEnd!=null&&t.load!=null&&T.bridgeEnd>start) p=(t.load-start)/(T.bridgeEnd-start);
     p=Math.min(1,Math.max(0,p));
-    pb.innerHTML='<div class="kv"><span>Current load</span><b class="mono">'+fmtKg(t.load)+'</b></div>'+
+    pb.innerHTML='<div class="kv"><span>Four-finger lift</span><b class="mono">'+fmtKg(t.load)+'</b></div>'+
       '<div class="kv"><span>Next step</span><b class="mono">'+
         (T.readyToTest?'max test':'+'+T.step+' kg → '+fmtKg(T.nextLoad))+'</b></div>'+
       '<div class="kv"><span>Bridge ends at</span><b class="mono">'+fmtKg(T.bridgeEnd)+'</b></div>'+
@@ -1076,7 +1086,7 @@ function buildBlockRows(T){
 function openLog(type){
   const d=derive(), tr=isTr();
   const T=tr?deriveTr(d):null;
-  const block = tr && S.training.phase==='block';
+  const block = tr;
   const opts = block ? [['block','Block'],['climb','Climb']]
                      : [['static','Static'],['dynamic','Dynamic'],['climb','Climb']];
   $('#logType').innerHTML=opts.map(o=>'<button data-v="'+o[0]+'">'+o[1]+'</button>').join('');
@@ -1090,7 +1100,8 @@ function openLog(type){
   $('#logNote').value='';
   logPain=null; paintPain();
   // still defaults to what you actually trained, per the pinned override
-  setLogType(type || (block?'block' : (timer.pinned && EX[timer.type] && !EX[timer.type].block)? timer.type : d.nextType));
+  setLogType(type || (block?'block'
+    : (timer.pinned && EX[timer.type] && !EX[timer.type].block) ? timer.type : d.nextType));
   open($('#logScrim'));
 }
 function setLogType(t){
@@ -1133,7 +1144,9 @@ $('#logSave').onclick=()=>{
     });
     Object.assign(S.training.loads,exd);       // remember what was actually used
     S.training.edge=edge;
-    S.sessions.push({id:uid(),ts:when,mode:'training',tphase:'block',type:'block',
+    // in the bridge the four-finger lift IS the ladder, so keep them in step
+    if(S.training.phase!=='block' && exd.b_crimp4!=null) S.training.load=exd.b_crimp4;
+    S.sessions.push({id:uid(),ts:when,mode:'training',tphase:S.training.phase,type:'block',
       weight:exd.b_crimp4!=null?exd.b_crimp4:null, edge, pain:logPain, note, ex:exd});
   }else if(tr){
     const wv=parseFloat($('#logWeight').value);
@@ -1189,7 +1202,7 @@ $('#maxSave').onclick=()=>{
   S.training.max=kg; S.training.maxAt=now; S.training.edge=+$('#maxEdge').value;
   S.training.phase='block'; S.training.blockStart=now;
   S.training.loads={};                      // reseed working loads off the new max
-  S.sessions.push({id:uid(),ts:now,mode:'training',tphase:'test',type:'static',
+  S.sessions.push({id:uid(),ts:now,mode:'training',tphase:'test',type:'max',
     weight:kg,edge:S.training.edge,sets:1,pain:maxPain,note:''});
   timer.pinned=false;
   save(); close($('#maxScrim')); resetTimer(); render();

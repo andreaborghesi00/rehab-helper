@@ -14,14 +14,22 @@ The title in the top-left is a switch.
 
 **Finger training** — life after discharge, in three phases:
 
-1. **Bridge** — a faster ladder off the rehab endpoint. +1 kg below 25 kg, +2 kg above,
-   which keeps the *relative* step roughly constant (a fixed +1 kg is a 14 % jump at 7 kg
-   but only 3.7 % at 27 kg). A step unlocks after **2 painless sessions and at least 3 days**
-   at that load — pain is the gate, and the 3-day floor stops 2×/day from running the whole
-   bridge in a week.
-2. **Max test** — one hand, 7–10 s, on the edge you trained on.
-3. **Abrahamsson block** — 30 days, 2× daily, 10 s on / 50 s off, all six exercises.
-   Working loads are **% of your tested max**, not % of bodyweight.
+1. **Bridge** — the six Abrahamsson exercises from day one, at a load that climbs.
+   The four-finger lift is the ladder; the other five scale off it by the protocol's own
+   relative intensities (80/80/55/55/35/35), and anything you re-tune by hand is carried
+   up in proportion when the ladder steps. +1 kg below 25 kg, +2 kg above, which keeps the
+   *relative* step roughly constant (a fixed +1 kg is a 14 % jump at 7 kg but only 3.7 % at
+   27 kg). A step unlocks after **2 painless sessions and at least 3 days** at that load —
+   pain is the gate, and the 3-day floor stops 2×/day from running the whole bridge in a week.
+
+   Note the bridge starts at your rehab endpoint but as a **10 s** hold, where rehab ended
+   on **30 s**. Same kilos, much easier hold — so the first steps are deliberately soft.
+   Test your max early if they feel trivial; the phase card offers it at any load.
+2. **Max test** — one hand, 7–10 s, on the edge you trained on. Available at any point in
+   the bridge, not just at the end.
+3. **Abrahamsson block** — the same six exercises for 30 days, 2× daily. What changes at the
+   test is only where the loads come from: **% of your tested max** rather than scaled off
+   the bridge ladder.
 
 The block reuses the alternating-hands timer, so the second hand trains inside the first
 hand's rest: rest becomes 50 − 10 − 5 = 35 s, each hand still gets its full 50 s between
