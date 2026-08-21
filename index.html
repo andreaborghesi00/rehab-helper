@@ -141,7 +141,9 @@
     color:var(--accent,var(--ok));min-height:22px}
   #tmrHands,#tmrType{justify-content:center;margin:0 0 8px}
   .chips button:disabled{opacity:.35;cursor:default}
-  #tmrOff{color:var(--warn)}
+  /* the picked exercise turns amber when it is not the one the rotation is due */
+  #tmrType button.on.off{background:rgba(255,176,32,.16);color:var(--warn);border-color:transparent}
+  #tmrOff{color:var(--warn);letter-spacing:.06em}
   .cue{font-size:34px;font-weight:750;letter-spacing:-.5px;margin:2px 0 0}
   details>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
   details>summary::-webkit-details-marker{display:none}
@@ -212,7 +214,7 @@
         <button data-t="dynamic">Dynamic</button>
       </div>
       <div class="chips" id="tmrHands">
-        <button data-h="2">Both hands</button>
+        <button data-h="2">Alternating hands</button>
         <button data-h="1">One hand</button>
       </div>
       <p class="hint" id="tmrOff" style="display:none;margin:-4px 0 10px"></p>
@@ -947,16 +949,19 @@ function paintTimer(){
   else cue.style.display='none';
 
   const work=ex.reps? ex.reps+' reps of 3 s up / 3 s down':'30 s hold';
-  $('#tmrSub').textContent = ph==='done' ? 'All '+ex.sets+' sets done'+(two?' on both hands':'')+' — log it below.'
+  $('#tmrSub').textContent = ph==='done' ? 'All '+ex.sets+' sets done'+(two?' on each hand':'')+' — log it below.'
     : ph==='idle' ? ex.sets+' sets'+(two?' per hand':'')+' · '+work+' · 2 min rest'+(two?' per hand':'')
     : 'Set '+timer.set+' of '+ex.sets+(two?' · '+handName(timer.hand)+' hand':'');
   $('#tmrGo').textContent = timer.running?'Pause':(ph==='idle'||ph==='done'?'Start':'Resume');
   $$('#tmrHands button').forEach(b=>{ b.classList.toggle('on', (+b.dataset.h===2)===two); b.disabled=timer.running; });
-  $$('#tmrType button').forEach(b=>{ b.classList.toggle('on', b.dataset.t===timer.type); b.disabled=timer.running; });
-
-  const nt=derive().nextType, off=timer.type!==nt, o=$('#tmrOff');
+  const off=timer.type!==derive().nextType;
+  $$('#tmrType button').forEach(b=>{
+    const sel=b.dataset.t===timer.type;
+    b.classList.toggle('on',sel); b.classList.toggle('off',sel&&off); b.disabled=timer.running;
+  });
+  const o=$('#tmrOff');
   o.style.display=off?'block':'none';
-  if(off) o.textContent='Out of turn — the rotation has '+EX[nt].name.toLowerCase()+' next. Timer only; log it however you actually trained.';
+  o.textContent=off?'Out of turn':'';
 }
 $('#tmrGo').onclick=()=>{
   if(timer.phase==='done') resetTimer();

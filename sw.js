@@ -1,4 +1,4 @@
-const C = 'rehab-v5';
+const C = 'rehab-v6';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png'];
 
 self.addEventListener('install', e => {
