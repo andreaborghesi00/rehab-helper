@@ -137,6 +137,11 @@
   #tmrPhase{font-size:13px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--accent,var(--ok))}
   #tmrBig{font-size:60px;font-weight:700;letter-spacing:-2px;font-variant-numeric:tabular-nums;margin:4px 0}
   #tmrSub{color:var(--tx2);font-size:14px;min-height:21px}
+  #tmrHand{font-size:15px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent,var(--ok));min-height:22px}
+  #tmrHands,#tmrType{justify-content:center;margin:0 0 8px}
+  .chips button:disabled{opacity:.35;cursor:default}
+  #tmrOff{color:var(--warn)}
   .cue{font-size:34px;font-weight:750;letter-spacing:-.5px;margin:2px 0 0}
   details>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
   details>summary::-webkit-details-marker{display:none}
@@ -202,7 +207,17 @@
   <details class="card" id="tmrCard">
     <summary><h2>Guided timer</h2></summary>
     <div id="tmr" style="padding-top:14px">
+      <div class="chips" id="tmrType">
+        <button data-t="static">Static</button>
+        <button data-t="dynamic">Dynamic</button>
+      </div>
+      <div class="chips" id="tmrHands">
+        <button data-h="2">Both hands</button>
+        <button data-h="1">One hand</button>
+      </div>
+      <p class="hint" id="tmrOff" style="display:none;margin:-4px 0 10px"></p>
       <div id="tmrPhase">Ready</div>
+      <div id="tmrHand"></div>
       <div id="tmrBig">0:30</div>
       <div class="cue" id="tmrCue" style="display:none">UP</div>
       <div id="tmrSub">3 sets · tap start when you're on the edge</div>
@@ -315,6 +330,12 @@
     <div><label>Sessions per weight bump</label><input type="number" id="sPer" step="1" inputmode="numeric"></div>
   </div>
   <div class="two">
+    <div><label>Start with which hand</label>
+      <select id="sHand"><option value="left">Left hand</option><option value="right">Right hand</option></select></div>
+    <div><label>Hand-switch delay (s)</label><input type="number" id="sSwitch" step="1" min="0" inputmode="numeric"></div>
+  </div>
+  <p class="hint" id="sHandHint"></p>
+  <div class="two">
     <div><label>Start % of bodyweight</label><input type="number" id="sStart" step="1" inputmode="numeric"></div>
     <div><label>Target % of bodyweight</label><input type="number" id="sTarget" step="1" inputmode="numeric"></div>
   </div>
@@ -324,6 +345,9 @@
     <button class="btn ghost" id="sImport">Import</button>
   </div>
   <input type="file" id="sFile" accept="application/json,.json" style="display:none">
+  <p class="center muted" style="margin:22px 0 0">
+    <a href="https://ko-fi.com/cowoh" target="_blank" rel="noopener noreferrer">Support this app on Ko-fi</a>
+  </p>
   <div class="btns" style="margin-top:20px">
     <button class="btn ghost" data-close>Close</button>
     <button class="btn primary" id="sSave">Save</button>
@@ -356,7 +380,8 @@ const EX={
 
 /* ---------- state ---------- */
 const DEF={v:1,
-  settings:{bw:null,inc:1,minHours:6,perIncrease:4,startPct:10,targetPct:30},
+  settings:{bw:null,inc:1,minHours:6,perIncrease:4,startPct:10,targetPct:30,
+            hands:2,switchSec:5,firstHand:'left'},
   weight:{current:null,setAt:null},
   sessions:[], phase:{targetReachedAt:null}};
 
@@ -368,6 +393,10 @@ function load(){
     if(!raw) return structuredClone(DEF);
     const s=structuredClone(DEF);
     Object.assign(s.settings,raw.settings||{});
+    if(raw.settings && raw.settings.rehabHand && !raw.settings.firstHand)
+      s.settings.firstHand=raw.settings.rehabHand;   // renamed: it only ever meant "goes first"
+    delete s.settings.rehabHand;
+    if(s.settings.firstHand!=='right') s.settings.firstHand='left';
     Object.assign(s.weight,raw.weight||{});
     Object.assign(s.phase,raw.phase||{});
     s.sessions=Array.isArray(raw.sessions)?raw.sessions:[];
@@ -467,8 +496,10 @@ function render(){
   const tg=$('#nxTag'); tg.className='tag '+d.nextType; tg.textContent=ex.name;
   $('#nxWeight').textContent=fmtKg(d.cur);
   $('#nxPct').textContent = (S.settings.bw && d.cur!=null) ? Math.round(d.cur/S.settings.bw*1000)/10+'% BW' : 'set your bodyweight';
-  $('#nxSteps').innerHTML=ex.steps.map(s=>'<li>'+s+'</li>').join('');
-  if(timer.type!==d.nextType && !timer.running) setTimerType(d.nextType);
+  const steps=ex.steps.slice();
+  if(S.settings.hands!==1) steps.push('Then the <b>other hand</b>, while this one rests — <b>3 sets each</b>.');
+  $('#nxSteps').innerHTML=steps.map(s=>'<li>'+s+'</li>').join('');
+  if(timer.type!==d.nextType && !timer.running && !timer.pinned) setTimerType(d.nextType);
 
   // progress
   $('#pgTargetPct').textContent=S.settings.targetPct;
@@ -737,7 +768,7 @@ function paintPain(){
 }
 function openLog(type){
   const d=derive();
-  setLogType(type||d.nextType);
+  setLogType(type || (timer.pinned? timer.type : d.nextType));   // default to what you actually trained
   $('#logWeight').value = d.cur!=null? Math.round(d.cur*100)/100 : '';
   $('#logSets').value='3';
   $('#logWhen').value=toLocalInput(Date.now());
@@ -779,6 +810,7 @@ $('#logSave').onclick=()=>{
     if(!isNaN(wv) && wv!==S.weight.current){ S.weight.current=wv; S.weight.setAt=when-1; }
   }
   if(S.weight.setAt==null) S.weight.setAt=0;
+  timer.pinned=false;                 // logging hands the timer back to the rotation
   save(); syncPhase(); close($('#logScrim')); resetTimer(); render();
 };
 $('#btnClimb').onclick=()=>{
@@ -797,12 +829,20 @@ function openSettings(first){
   $('#sBw').value=s.bw??''; $('#sInc').value=s.inc; $('#sCur').value=S.weight.current??'';
   $('#sHours').value=s.minHours; $('#sPer').value=s.perIncrease;
   $('#sStart').value=s.startPct; $('#sTarget').value=s.targetPct;
+  $('#sHand').value=s.firstHand; $('#sSwitch').value=s.switchSec;
+  updHandHint();
   $('#setTitle').textContent=first?'Set up':'Settings';
   $('#setIntro').textContent=first?'Two numbers and you are done.':'';
   updCurHint();
   open($('#setScrim'));
 }
 $('#sBw').oninput=$('#sStart').oninput=$('#sInc').oninput=updCurHint;
+$('#sHand').onchange=updHandHint;
+function updHandHint(){
+  const a=$('#sHand').value==='right'?'Right':'Left', b=a==='Right'?'Left':'Right';
+  $('#sHandHint').textContent = a+' goes first each set, then '+b.toLowerCase()+
+    ' trains during its rest — so each hand still gets its full rest between its own sets.';
+}
 function updCurHint(){
   const bw=parseFloat($('#sBw').value), sp=parseFloat($('#sStart').value)||10, inc=parseFloat($('#sInc').value)||1;
   const tp=parseFloat($('#sTarget').value)||30;
@@ -819,10 +859,13 @@ $('#sSave').onclick=()=>{
   s.perIncrease=Math.max(1,parseInt($('#sPer').value,10)||4);
   s.startPct=parseFloat($('#sStart').value)||10;
   s.targetPct=parseFloat($('#sTarget').value)||30;
+  s.firstHand=$('#sHand').value==='right'?'right':'left';
+  s.switchSec=Math.min(60,Math.max(0,parseInt($('#sSwitch').value,10)||0));
   const c=parseFloat($('#sCur').value);
   if(!isNaN(c) && c!==S.weight.current){ S.weight.current=c; S.weight.setAt=Date.now(); }
   if(S.weight.setAt==null) S.weight.setAt=Date.now();
   save(); syncPhase(); close($('#setScrim')); render();
+  if(!timer.running) resetTimer(); else paintTimer();
 };
 $('#sExport').onclick=()=>{
   const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
@@ -853,40 +896,101 @@ $('#sWipe').onclick=()=>{
 };
 
 /* ---------- guided timer ---------- */
-const timer={type:'static',running:false,phase:'idle',set:1,left:0,endAt:0,rep:1,dir:'UP',wake:null};
+/* phases: idle → work → [switch → work] → rest → … → done
+   In two-hand mode the second hand works *inside* the first hand's rest, so the
+   explicit rest phase is shortened by exactly what the other hand's turn consumed —
+   each hand still gets its full prescribed rest between its own consecutive sets. */
+/* `pinned` = the user chose an exercise by hand, so the rotation stops overriding the
+   timer. Not persisted: it is an override for right now, cleared when a session is logged. */
+const timer={type:'static',pinned:false,running:false,phase:'idle',set:1,hand:0,left:0,endAt:0,
+             rep:1,dir:'UP',cd:null,wake:null};
+const twoHand=()=>S.settings.hands!==1;
+const switchSec=()=>Math.max(0,+S.settings.switchSec||0);
+const handName=i=>{
+  const first=S.settings.firstHand==='right'?'Right':'Left';
+  return i===0?first:(first==='Right'?'Left':'Right');
+};
+/* gap between the end of the last hand's work and the next set's first work */
+function restGap(ex){
+  if(!twoHand()) return ex.rest;
+  return Math.max(10, ex.rest - ex.work - switchSec());
+}
 function setTimerType(t){ timer.type=t; resetTimer(); }
 function resetTimer(){
   const ex=EX[timer.type];
-  Object.assign(timer,{running:false,phase:'idle',set:1,left:ex.work,rep:1,dir:'UP'});
+  Object.assign(timer,{running:false,phase:'idle',set:1,hand:0,left:ex.work,rep:1,dir:'UP',cd:null});
   releaseWake(); paintTimer();
 }
 function paintTimer(){
-  const ex=EX[timer.type];
+  const ex=EX[timer.type], two=twoHand(), ph=timer.phase;
   const card=$('#tmrCard');
-  card.style.setProperty('--accent', timer.phase==='rest'?'var(--wait)':'var(--ok)');
-  const ph=timer.phase==='idle'?(ex.name+' · ready'):timer.phase==='work'?('Set '+timer.set+' — go'):('Rest — set '+timer.set+' next');
-  $('#tmrPhase').textContent = timer.phase==='done'?'Finished':ph;
+  card.style.setProperty('--accent', ph==='rest'?'var(--wait)':ph==='switch'?'var(--warn)':'var(--ok)');
+  let head;
+  if(ph==='done') head='Finished';
+  else if(ph==='idle') head=ex.name+' · ready';
+  else if(ph==='work') head='Set '+timer.set+' — go';
+  else if(ph==='switch') head='Switch hands';
+  else head='Rest — set '+timer.set+' next';
+  $('#tmrPhase').textContent=head;
+
+  const hl=$('#tmrHand');
+  if(!two || ph==='idle' || ph==='done') hl.textContent = two&&ph==='idle' ? handName(0)+' hand first' : '';
+  else if(ph==='work') hl.textContent=handName(timer.hand)+' hand';
+  else if(ph==='switch') hl.textContent='→ '+handName(1)+' hand';
+  else hl.textContent='both hands resting';
+
   const t=Math.max(0,Math.ceil(timer.left));
   $('#tmrBig').textContent=Math.floor(t/60)+':'+String(t%60).padStart(2,'0');
   const cue=$('#tmrCue');
-  if(timer.phase==='work' && ex.reps){ cue.style.display='block'; cue.textContent=timer.dir+'  ·  '+timer.rep+'/'+ex.reps;
+  if(ph==='work' && ex.reps){ cue.style.display='block'; cue.textContent=timer.dir+'  ·  '+timer.rep+'/'+ex.reps;
     cue.style.color = timer.dir==='UP'?'var(--ok)':'var(--wait)'; }
   else cue.style.display='none';
-  $('#tmrSub').textContent = timer.phase==='done' ? 'All '+ex.sets+' sets done — log it below.'
-    : timer.phase==='idle' ? ex.sets+' sets · '+(ex.reps? ex.reps+' reps of 3 s up / 3 s down':'30 s hold')+' · 2 min rest'
-    : 'Set '+timer.set+' of '+ex.sets;
-  $('#tmrGo').textContent = timer.running?'Pause':(timer.phase==='idle'||timer.phase==='done'?'Start':'Resume');
+
+  const work=ex.reps? ex.reps+' reps of 3 s up / 3 s down':'30 s hold';
+  $('#tmrSub').textContent = ph==='done' ? 'All '+ex.sets+' sets done'+(two?' on both hands':'')+' — log it below.'
+    : ph==='idle' ? ex.sets+' sets'+(two?' per hand':'')+' · '+work+' · 2 min rest'+(two?' per hand':'')
+    : 'Set '+timer.set+' of '+ex.sets+(two?' · '+handName(timer.hand)+' hand':'');
+  $('#tmrGo').textContent = timer.running?'Pause':(ph==='idle'||ph==='done'?'Start':'Resume');
+  $$('#tmrHands button').forEach(b=>{ b.classList.toggle('on', (+b.dataset.h===2)===two); b.disabled=timer.running; });
+  $$('#tmrType button').forEach(b=>{ b.classList.toggle('on', b.dataset.t===timer.type); b.disabled=timer.running; });
+
+  const nt=derive().nextType, off=timer.type!==nt, o=$('#tmrOff');
+  o.style.display=off?'block':'none';
+  if(off) o.textContent='Out of turn — the rotation has '+EX[nt].name.toLowerCase()+' next. Timer only; log it however you actually trained.';
 }
 $('#tmrGo').onclick=()=>{
   if(timer.phase==='done') resetTimer();
   if(timer.running){ timer.running=false; releaseWake(); }
   else{
-    if(timer.phase==='idle'){ timer.phase='work'; timer.left=EX[timer.type].work; timer.rep=1; timer.dir='UP'; }
+    if(timer.phase==='idle'){ timer.phase='work'; timer.hand=0; timer.left=EX[timer.type].work; timer.rep=1; timer.dir='UP'; }
     timer.running=true; timer.endAt=Date.now()+timer.left*1000; requestWake(); beep(880,.08);
   }
   paintTimer();
 };
 $('#tmrReset').onclick=resetTimer;
+$$('#tmrHands button').forEach(b=>b.onclick=()=>{
+  if(timer.running) return;
+  S.settings.hands=+b.dataset.h; save(); resetTimer();
+});
+$$('#tmrType button').forEach(b=>b.onclick=()=>{
+  if(timer.running) return;
+  const t=b.dataset.t;
+  timer.pinned = t!==derive().nextType;   // picking the on-rotation one hands control back
+  setTimerType(t);
+});
+
+function advance(phase,secs){ timer.phase=phase; timer.left=secs; timer.endAt=Date.now()+secs*1000; timer.cd=null; }
+
+/* one pip on each of the last COUNTIN seconds of the rest phase only — never the
+   hand-switch, which is short enough that its own beep plus the go beep bracket it. */
+const COUNTIN=5;
+function countIn(){
+  if(timer.phase!=='rest'){ timer.cd=null; return; }
+  const s=Math.ceil(timer.left);
+  if(s>COUNTIN||s<1){ if(s>COUNTIN) timer.cd=null; return; }
+  if(s===timer.cd) return;
+  timer.cd=s; beep(784,.06);
+}
 
 function tickTimer(){
   if(!timer.running) return;
@@ -898,19 +1002,26 @@ function tickTimer(){
     const dir=(done%6)<3?'UP':'DOWN';
     if(r!==timer.rep||dir!==timer.dir){ timer.rep=r; timer.dir=dir; beep(dir==='UP'?660:440,.05); }
   }
+  countIn();
   if(timer.left<=0){
     if(timer.phase==='work'){
-      if(timer.set>=ex.sets){ timer.phase='done'; timer.running=false; timer.left=0; releaseWake(); beep(1046,.5); }
-      else{ timer.phase='rest'; timer.left=ex.rest; timer.endAt=Date.now()+ex.rest*1000; beep(523,.3); }
+      if(twoHand() && timer.hand===0){
+        if(switchSec()>0){ advance('switch',switchSec()); beep(740,.15); }
+        else{ timer.hand=1; timer.rep=1; timer.dir='UP'; advance('work',ex.work); beep(880,.25); }
+      }
+      else if(timer.set>=ex.sets){ timer.phase='done'; timer.running=false; timer.left=0; releaseWake(); beep(1046,.5); }
+      else{ advance('rest',restGap(ex)); beep(523,.3); }
+    }else if(timer.phase==='switch'){
+      timer.hand=1; timer.rep=1; timer.dir='UP'; advance('work',ex.work); beep(880,.25);
     }else{
-      timer.set++; timer.phase='work'; timer.rep=1; timer.dir='UP';
-      timer.left=ex.work; timer.endAt=Date.now()+ex.work*1000; beep(880,.25);
+      timer.set++; timer.hand=0; timer.rep=1; timer.dir='UP'; advance('work',ex.work); beep(880,.25);
     }
   }
   paintTimer();
 }
-let AC=null;
+let AC=null, onBeep=null;      // onBeep: test hook, see window.__rehab
 function beep(f,d){
+  if(onBeep) onBeep(f,d);
   try{
     AC=AC||new (window.AudioContext||window.webkitAudioContext)();
     if(AC.state==='suspended') AC.resume();
@@ -956,13 +1067,16 @@ setInterval(()=>{
 
 syncPhase();
 render();
+paintTimer();
 paintWake();
 if(!S.settings.bw) openSettings(true);
 
 if('serviceWorker' in navigator && location.protocol==='https:')
   navigator.serviceWorker.register('./sw.js').catch(()=>{});
 
-window.__rehab={get S(){return S},set S(v){S=v},derive,render,save,load:()=>{S=load();},KEY};
+window.__rehab={get S(){return S},set S(v){S=v},derive,render,save,load:()=>{S=load();},KEY,
+                timer,tickTimer,resetTimer,restGap,EX,COUNTIN,
+                set onBeep(f){ onBeep=f; }};
 })();
 </script>
 </body>
