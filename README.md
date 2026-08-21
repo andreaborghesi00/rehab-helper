@@ -11,9 +11,18 @@ Built for the phone. No account, no server — everything lives in your browser.
 - **Alternates** static → dynamic → static automatically, and warns you if you pick the same one twice.
 - **Tracks load** and tells you when you've done 4 sessions at the current weight, with a one-tap bump.
 - **Progress to 30 % bodyweight**, from your 10 % starting point.
-- **Climbing days** — tap 🧗 and the app tells you to skip that day. Climbing never counts toward the 4-session bump.
+- **Climbing days** — pick "Climb" in the log sheet (or tap 🧗 for the quick version) and
+  the app tells you to skip that day. Climbing outranks the 6 h timer, never counts toward
+  the 4-session bump, and can carry its own pain rating.
 - **Phase 2** — when you hit 30 % BW it starts the 1-month countdown, then shows the H-tape decision.
-- **Guided timer** — 30 s hold or 3 s up / 3 s down × 10, 2 min rests, 3 sets, with beeps and vibration.
+- **Guided timer** — 30 s hold or 3 s up / 3 s down × 10, 2 min rests, 3 sets, with beeps, vibration, and a screen wake-lock.
+- **Pain 0–10** per session, plotted against load so you can see the trend that actually
+  matters. Two stacked panels sharing one x-axis — never a dual y-axis, which would
+  invent a correlation between two unrelated scales. Tap or drag the chart to inspect
+  a session; the history list below is the table view.
+- **Pain advisory** — if pain averages ≥5 over your last three sessions, or jumps by
+  1.5 against the previous three, the app says so and tells you to raise it with your
+  physio. It never tells you to change the load on your own.
 - **Backup** — export/import your history as JSON from Settings.
 
 ## Deploy to GitHub Pages

@@ -16,6 +16,8 @@
     --bg:#0e1013; --card:#171a20; --card2:#1e222a; --line:#282d37;
     --tx:#eef1f6; --tx2:#9aa3b2; --tx3:#6b7482;
     --ok:#3ddc84; --wait:#5b9cff; --warn:#ffb020; --climb:#c07bff; --bad:#ff5f56;
+    /* chart marks — validated vs the #171a20 surface (dataviz six checks) */
+    --load-line:#4a8ae8; --load-pain:#cb6a12;
     --r:16px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -142,6 +144,27 @@
   details>summary:after{content:"▾";color:var(--tx3);font-size:13px}
   details[open]>summary:after{content:"▴"}
   .mono{font-variant-numeric:tabular-nums}
+
+  /* pain picker */
+  .pain{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+  .pain button{padding:12px 0;border-radius:10px;border:1px solid var(--line);background:var(--card2);
+    color:var(--tx2);font:14px inherit;font-family:inherit;font-weight:650;cursor:pointer}
+  .pain button.on{background:var(--load-pain);border-color:transparent;color:#fff}
+  .painrow{display:flex;justify-content:space-between;font-size:12px;color:var(--tx3);margin-top:7px}
+
+  /* chart */
+  .charthead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:2px}
+  .readout{font-size:13px;color:var(--tx2);min-height:19px;margin:0 0 8px}
+  .readout b{color:var(--tx);font-weight:600}
+  .swatch{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:baseline;margin-right:5px}
+  .chips{display:flex;gap:6px;margin-bottom:12px}
+  .chips button{flex:0 0 auto;padding:6px 12px;border-radius:999px;border:1px solid var(--line);
+    background:transparent;color:var(--tx3);font:12.5px inherit;font-family:inherit;font-weight:650;cursor:pointer}
+  .chips button.on{background:var(--card2);color:var(--tx);border-color:var(--tx3)}
+  svg.chart{display:block;width:100%;height:auto;touch-action:pan-y}
+  .painbadge{font-size:11px;font-weight:700;padding:3px 7px;border-radius:6px;white-space:nowrap;
+    background:rgba(203,106,18,.18);color:#e08a2e;flex:0 0 auto}
+  .painbadge:before{content:"pain ";font-weight:500;opacity:.75}
   .center{text-align:center}
   .muted{color:var(--tx3);font-size:12.5px}
   a{color:var(--wait)}
@@ -187,7 +210,7 @@
         <button class="btn primary" id="tmrGo">Start</button>
         <button class="btn ghost" id="tmrReset">Reset</button>
       </div>
-      <p class="hint">Keep the screen on — the timer pauses if the tab is closed.</p>
+      <p class="hint" id="wakeHint">Your screen is kept awake while the timer runs. It still stops if you close the tab.</p>
     </div>
   </details>
 
@@ -198,6 +221,17 @@
     <div class="kv"><span>Sessions at this weight</span><b class="mono" id="pgCount">—</b></div>
     <div class="bar" style="margin-top:14px"><i id="pgBar" style="width:0"></i></div>
     <p class="hint" id="pgHint"></p>
+  </div>
+
+  <div class="card" id="trendCard">
+    <div class="charthead"><h2>Pain vs load</h2></div>
+    <p class="readout" id="chartRead"></p>
+    <div class="chips" id="chartRange">
+      <button data-n="10">Last 10</button>
+      <button data-n="30" class="on">Last 30</button>
+      <button data-n="0">All</button>
+    </div>
+    <div id="chartBox"></div>
   </div>
 
   <div class="card">
@@ -220,7 +254,7 @@
 
 <div class="fab"><div class="inner">
   <button class="btn primary" id="btnLog">Log session</button>
-  <button class="btn sec" id="btnClimb" title="Log a climbing day">🧗</button>
+  <button class="btn sec" id="btnClimb" title="Log a climbing day" aria-label="Log a climbing day">🧗</button>
 </div></div>
 
 <!-- LOG SHEET -->
@@ -231,17 +265,20 @@
   <div class="seg" id="logType">
     <button data-v="static">Static</button>
     <button data-v="dynamic">Dynamic</button>
+    <button data-v="climb">Climb</button>
   </div>
   <p class="hint" id="logTypeHint"></p>
-  <label>Weight added (kg)</label>
-  <div class="stepper">
-    <button id="wMinus">−</button>
-    <input type="number" id="logWeight" step="0.1" inputmode="decimal">
-    <button id="wPlus">+</button>
+  <div id="loadFields">
+    <label>Weight added (kg)</label>
+    <div class="stepper">
+      <button id="wMinus">−</button>
+      <input type="number" id="logWeight" step="0.1" inputmode="decimal">
+      <button id="wPlus">+</button>
+    </div>
   </div>
   <div class="two">
-    <div>
-      <label>Sets completed</label>
+    <div id="setsField">
+      <label>Sets</label>
       <select id="logSets"><option>1</option><option>2</option><option selected>3</option><option>4</option></select>
     </div>
     <div>
@@ -249,7 +286,11 @@
       <input type="datetime-local" id="logWhen">
     </div>
   </div>
-  <label>Notes (pain, feel…)</label>
+  <label>Pain</label>
+  <div class="pain" id="logPain"></div>
+  <div class="painrow"><span>0 · none</span><span>10 · worst</span></div>
+  <p class="hint" id="painHint"></p>
+  <label>Notes (what it felt like)</label>
   <textarea id="logNote" rows="2" placeholder="optional"></textarea>
   <div class="btns" style="margin-top:20px">
     <button class="btn ghost" data-close>Cancel</button>
@@ -380,8 +421,8 @@ function derive(now){
   const atTarget = (cur!=null && target!=null && cur>=target-1e-9);
   const dueIncrease = !atTarget && since>=S.settings.perIncrease;
   let state='ready';
-  if(now<readyAt) state='waiting';
-  else if(climbedToday) state='climb';
+  if(climbedToday) state='climb';        // the climbing rule outranks the clock
+  else if(now<readyAt) state='waiting';
   return {now,last,nextType,readyAt,climbedToday,target,cur,since,atTarget,dueIncrease,state,count:ex.length};
 }
 function syncPhase(){
@@ -407,7 +448,8 @@ function render(){
     pct=Math.min(1,Math.max(0,1-(d.readyAt-d.now)/span));
   }else if(d.state==='climb'){
     accent='var(--climb)'; pill='Climbing day'; big='Skip today'; pct=1;
-    sub='You logged climbing today — rest the fingers. Log anyway if you want to override.';
+    sub='You logged climbing today — rest the fingers.'+
+        (d.now<d.readyAt?' (6 h window opens at <b>'+clock(d.readyAt)+'</b> anyway.)':'');
   }else{
     accent='var(--ok)'; pill='Ready'; big=d.count? 'Go now':'Start now'; pct=1;
     sub=d.last? 'Last session '+dayLabel(d.last.ts).toLowerCase()+' at '+clock(d.last.ts)
@@ -451,17 +493,22 @@ function render(){
   $('#btnClimb').style.borderColor = d.climbedToday ? 'var(--climb)' : 'var(--line)';
 
   renderAlerts(d);
+  renderChart();
   renderHistory();
 }
 
 function renderAlerts(d){
   const box=$('#alerts'); let h='';
   if(!S.settings.bw) h+=al('warn','⚙','Finish setup','Tap the gear to enter your bodyweight and plate size.');
+  const pt=painTrend();
   if(d.dueIncrease){
     const next=Math.min(d.target ?? Infinity, roundTo(d.cur+S.settings.inc,S.settings.inc));
-    h+=al('warn','▲','Time to add weight',
-      d.since+' sessions done at '+fmtKg(d.cur)+'. Go to <b>'+fmtKg(next)+'</b>.'+
+    h+=al(pt?'red':'warn', pt?'!':'▲', pt?'Weight is due — but check the pain trend':'Time to add weight',
+      d.since+' sessions done at '+fmtKg(d.cur)+'. Next step is <b>'+fmtKg(next)+'</b>.'+
+      (pt?'<br><br>'+pt+' Worth raising with your physio before you load it further.':'')+
       '<div style="margin-top:10px"><button class="btn warn" id="doBump" style="padding:11px">Bump to '+fmtKg(next)+'</button></div>');
+  } else if(pt){
+    h+=al('red','!','Pain is trending up', pt+' Nothing to change on your own — but mention it at your next physio visit.');
   }
   if(S.phase.targetReachedAt){
     const end=S.phase.targetReachedAt+30*DAY, left=end-Date.now();
@@ -498,8 +545,9 @@ function renderHistory(){
     const tag=s.type==='climb'?'<span class="tag climb">Climb</span>'
       :'<span class="tag '+s.type+'">'+EX[s.type].name+'</span>';
     const meta=s.type==='climb'?'climbing day':fmtKg(s.weight)+' · '+(s.sets||3)+' sets';
+    const pb=s.pain!=null?'<span class="painbadge">'+s.pain+'</span>':'';
     h+='<li>'+tag+'<div class="grow"><div>'+meta+'</div>'+
-       (s.note?'<div class="note">'+esc(s.note)+'</div>':'')+'</div>'+
+       (s.note?'<div class="note">'+esc(s.note)+'</div>':'')+'</div>'+pb+
        '<span class="when">'+clock(s.ts)+'</span>'+
        '<button class="del'+(armed===s.id?' arm':'')+'" data-del="'+s.id+'">'+(armed===s.id?'Delete?':'✕')+'</button></li>';
   }
@@ -513,6 +561,153 @@ function renderHistory(){
 }
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
+/* ---------- pain vs load chart ----------
+   Two stacked panels on ONE shared x-axis, never a dual y-axis: the two measures
+   have unrelated scales and overlaying them would invent a correlation.
+   Marks/colours follow the dataviz spec; both hexes validated against #171a20.  */
+let chartN=30, hoverIdx=null;
+const VW=340, PX0=30, PX1=334, LT=16, LB=92, PT=116, PB=168;
+
+function chartRows(){
+  const all=[...S.sessions].sort((a,b)=>a.ts-b.ts);
+  return chartN>0 ? all.slice(-chartN) : all;
+}
+function renderChart(){
+  const rows=chartRows(), box=$('#chartBox');
+  $$('#chartRange button').forEach(b=>b.classList.toggle('on',+b.dataset.n===chartN));
+  if(rows.length<2){
+    box.innerHTML='<p class="muted" style="margin:0">Log at least two sessions to see the trend.</p>';
+    $('#chartRead').textContent=''; return;
+  }
+  const N=rows.length, slot=(PX1-PX0)/N;
+  const xAt=i=>PX0+(i+0.5)*slot;
+
+  // --- load domain ---
+  const lp=rows.map((r,i)=>({i,w:(r.type!=='climb'&&r.weight!=null)?r.weight:null})).filter(o=>o.w!=null);
+  let lo=0,hi=1;
+  if(lp.length){
+    lo=Math.min(...lp.map(o=>o.w)); hi=Math.max(...lp.map(o=>o.w));
+    if(hi===lo){ lo=lo-1; hi=hi+1; }
+    else { const pad=(hi-lo)*0.18; lo=lo-pad; hi=hi+pad; }
+    lo=Math.max(0,Math.floor(lo)); hi=Math.ceil(hi);      // clean tick numbers, never 6.3 / 11.7
+    if(hi-lo<2) hi=lo+2;
+  }
+  const yL=v=>LB-(v-lo)/(hi-lo)*(LB-LT);
+  const yP=v=>PB-(v/10)*(PB-PT);
+
+  let g='';
+  // gridlines (hairline, solid, recessive)
+  g+=gline(LT)+gline(LB)+gline(PB)+gline(yP(5))+gline(PT);
+
+  // --- load: step-after line + 10% wash ---
+  if(lp.length){
+    let d='M'+xAt(lp[0].i)+' '+yL(lp[0].w);
+    for(let k=1;k<lp.length;k++){ d+=' L'+xAt(lp[k].i)+' '+yL(lp[k-1].w)+' L'+xAt(lp[k].i)+' '+yL(lp[k].w); }
+    const lastX=xAt(N-1);
+    if(lastX>xAt(lp[lp.length-1].i)) d+=' L'+lastX+' '+yL(lp[lp.length-1].w);
+    g+='<path d="'+d+' L'+xAt(N-1)+' '+LB+' L'+xAt(lp[0].i)+' '+LB+' Z" fill="var(--load-line)" opacity=".10"/>';
+    g+='<path d="'+d+'" fill="none" stroke="var(--load-line)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+    const e=lp[lp.length-1];
+    g+='<circle cx="'+xAt(e.i)+'" cy="'+yL(e.w)+'" r="4" fill="var(--load-line)" stroke="var(--card)" stroke-width="2"/>';
+    g+=txt(Math.min(xAt(e.i),PX1-4), yL(e.w)-10, fmtKg(e.w), 'end', 11, 'var(--tx)', 600);
+  }
+  // y ticks for load
+  g+=txt(PX0-6,yL(hi)+4,rnd(hi),'end',10,'var(--tx3)');
+  g+=txt(PX0-6,yL(lo)+4,rnd(lo),'end',10,'var(--tx3)');
+
+  // --- pain: columns from the 0 baseline ---
+  const bw=Math.min(24,slot*0.62);
+  let rated=0;
+  rows.forEach((r,i)=>{
+    if(r.pain==null) return;
+    rated++;
+    const x=xAt(i)-bw/2, y=yP(r.pain), h=PB-y;
+    g+= h<1 ? '<rect x="'+x+'" y="'+(PB-1.5)+'" width="'+bw+'" height="1.5" fill="var(--load-pain)" opacity=".55"/>'
+            : '<path d="'+barPath(x,y,bw,h)+'" fill="var(--load-pain)"/>';
+  });
+  g+=txt(PX0-6,yP(10)+4,'10','end',10,'var(--tx3)');
+  g+=txt(PX0-6,yP(0)+4,'0','end',10,'var(--tx3)');
+  // climbing days: a tick under the baseline, so a gap reads as deliberate
+  rows.forEach((r,i)=>{ if(r.type==='climb')
+    g+='<rect x="'+(xAt(i)-2.5)+'" y="'+(PB+3)+'" width="5" height="3" rx="1.5" fill="var(--climb)"/>'; });
+
+  // panel titles + x labels (text tokens only, never the series colour)
+  g+=txt(PX0-24,10,'LOAD','start',9,'var(--tx3)',700)+txt(PX0-24,110,'PAIN','start',9,'var(--tx3)',700);
+  g+=txt(PX0,184,dayLabel(rows[0].ts),'start',10,'var(--tx3)');
+  g+=txt(PX1,184,dayLabel(rows[N-1].ts),'end',10,'var(--tx3)');
+  if(!rated) g+=txt((PX0+PX1)/2,yP(5)+4,'no pain logged yet','middle',11,'var(--tx3)');
+
+  // crosshair (hidden until touched)
+  g+='<line id="cxA" x1="0" y1="'+LT+'" x2="0" y2="'+PB+'" stroke="var(--tx3)" stroke-width="1" opacity="0"/>';
+  g+='<circle id="cxD" r="4.5" fill="var(--load-line)" stroke="var(--card)" stroke-width="2" opacity="0"/>';
+
+  box.innerHTML='<svg class="chart" viewBox="0 0 '+VW+' 196" role="img" aria-label="Pain and load over the last '+N+' sessions">'+g+'</svg>';
+  bindChart(box.querySelector('svg'),rows,slot,xAt,yL,lo,hi);
+  summary(rows);
+}
+const gline=y=>'<line x1="'+PX0+'" y1="'+y+'" x2="'+PX1+'" y2="'+y+'" stroke="var(--line)" stroke-width="1"/>';
+function txt(x,y,t,anchor,size,fill,w){
+  return '<text x="'+x+'" y="'+y+'" text-anchor="'+(anchor||'start')+'" font-size="'+(size||10)+
+    '" fill="'+(fill||'var(--tx3)')+'" font-weight="'+(w||500)+'" font-family="inherit">'+esc(t)+'</text>';
+}
+function barPath(x,y,w,h){
+  const r=Math.min(4,w/2,h);
+  return 'M'+x+' '+(y+h)+' L'+x+' '+(y+r)+' Q'+x+' '+y+' '+(x+r)+' '+y+
+         ' L'+(x+w-r)+' '+y+' Q'+(x+w)+' '+y+' '+(x+w)+' '+(y+r)+' L'+(x+w)+' '+(y+h)+' Z';
+}
+const rnd=v=>(Math.round(v*10)/10).toString().replace(/\.0$/,'');
+function summary(rows){
+  const ex=rows.filter(r=>r.type!=='climb'&&r.weight!=null);
+  const pn=rows.filter(r=>r.pain!=null);
+  let h='<span><i class="swatch" style="background:var(--load-line)"></i>';
+  h+= ex.length? '<b>'+fmtKg(ex[0].weight)+' → '+fmtKg(ex[ex.length-1].weight)+'</b>' : 'no load yet';
+  h+='</span> &nbsp; <span><i class="swatch" style="background:var(--load-pain)"></i>';
+  h+= pn.length? 'avg <b>'+(pn.reduce((a,b)=>a+b.pain,0)/pn.length).toFixed(1)+'</b>, last <b>'+pn[pn.length-1].pain+'</b>'
+               : 'pain not logged';
+  h+='</span>';
+  $('#chartRead').innerHTML=h;
+}
+function bindChart(svg,rows,slot,xAt,yL,lo,hi){
+  const line=svg.querySelector('#cxA'), dot=svg.querySelector('#cxD');
+  const at=e=>{
+    const r=svg.getBoundingClientRect();
+    const vx=(e.clientX-r.left)/r.width*VW;
+    return Math.max(0,Math.min(rows.length-1,Math.floor((vx-PX0)/slot)));
+  };
+  const show=i=>{
+    const r=rows[i], x=xAt(i);
+    line.setAttribute('x1',x); line.setAttribute('x2',x); line.setAttribute('opacity','.5');
+    if(r.type!=='climb'&&r.weight!=null){
+      dot.setAttribute('cx',x); dot.setAttribute('cy',yL(r.weight)); dot.setAttribute('opacity','1');
+    } else dot.setAttribute('opacity','0');
+    const what=r.type==='climb'?'Climbing day':EX[r.type].name;
+    let h='<b>'+esc(what)+'</b> · '+dayLabel(r.ts).toLowerCase()+' '+clock(r.ts);
+    if(r.type!=='climb'&&r.weight!=null) h+=' · '+fmtKg(r.weight);
+    h+=' · pain '+(r.pain==null?'—':'<b>'+r.pain+'</b>');
+    $('#chartRead').innerHTML=h;
+  };
+  const clear=()=>{ line.setAttribute('opacity','0'); dot.setAttribute('opacity','0'); summary(rows); };
+  svg.addEventListener('pointerdown',e=>{ svg.setPointerCapture(e.pointerId); show(at(e)); });
+  svg.addEventListener('pointermove',e=>{ if(e.buttons||e.pointerType==='touch') show(at(e)); });
+  svg.addEventListener('pointerup',clear);
+  svg.addEventListener('pointercancel',clear);
+  svg.addEventListener('pointerleave',clear);
+}
+$$('#chartRange button').forEach(b=>b.onclick=()=>{ chartN=+b.dataset.n; renderChart(); });
+
+/* pain trend — advisory only, never a dosing instruction */
+function painTrend(){
+  const rated=exSessions().filter(s=>s.pain!=null);
+  if(rated.length<3) return null;
+  const last3=rated.slice(-3), prev3=rated.slice(-6,-3);
+  const mean=a=>a.reduce((x,y)=>x+y.pain,0)/a.length;
+  const m3=mean(last3);
+  if(m3>=5) return 'Pain has averaged '+m3.toFixed(1)+'/10 over your last three sessions.';
+  if(prev3.length===3 && m3>=mean(prev3)+1.5)
+    return 'Pain is up over your last three sessions ('+mean(prev3).toFixed(1)+' → '+m3.toFixed(1)+'/10).';
+  return null;
+}
+
 /* ---------- sheets ---------- */
 function open(el){ el.classList.add('on'); }
 function close(el){ el.classList.remove('on'); }
@@ -522,22 +717,46 @@ $$('.scrim').forEach(sc=>{
 });
 
 /* log sheet */
-let logType='static';
-function openLog(){
+let logType='static', logPain=null;
+
+/* pain picker: 0-10, deliberately NOT preselected — a fabricated 0 would poison the trend */
+(function buildPain(){
+  const box=$('#logPain');
+  box.innerHTML=Array.from({length:11},(_,i)=>'<button type="button" data-p="'+i+'">'+i+'</button>').join('');
+  box.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+    const v=+b.dataset.p;
+    logPain = (logPain===v) ? null : v;   // tap again to clear
+    paintPain();
+  });
+})();
+function paintPain(){
+  $$('#logPain button').forEach(b=>b.classList.toggle('on',logPain!==null && +b.dataset.p===logPain));
+  $('#painHint').textContent = logPain===null
+    ? 'Not logged — this session will be a gap in the trend.'
+    : (logPain===0?'No pain.':logPain<=3?'Mild.':logPain<=6?'Moderate — worth watching.':'High — tell your physio.');
+}
+function openLog(type){
   const d=derive();
-  setLogType(d.nextType);
+  setLogType(type||d.nextType);
   $('#logWeight').value = d.cur!=null? Math.round(d.cur*100)/100 : '';
   $('#logSets').value='3';
   $('#logWhen').value=toLocalInput(Date.now());
   $('#logNote').value='';
+  logPain=null; paintPain();
   open($('#logScrim'));
 }
 function setLogType(t){
+  if(t!=='climb' && !EX[t]) t='static';
   logType=t;
   $$('#logType button').forEach(b=>b.classList.toggle('on',b.dataset.v===t));
+  const climb = t==='climb';
+  $('#loadFields').style.display = climb?'none':'';
+  $('#setsField').style.display  = climb?'none':'';
   const d=derive();
-  $('#logTypeHint').innerHTML = t===d.nextType ? 'Alternating correctly.' :
-    '⚠︎ You did <b>'+EX[t].name.toLowerCase()+'</b> last time too — the physio wants them alternated.';
+  $('#logTypeHint').innerHTML = climb
+    ? 'Climbing day — no rehab session today. Max 1 h with H-taping. This does not count toward the weight bump.'
+    : t===d.nextType ? 'Alternating correctly.'
+    : '⚠︎ You did <b>'+EX[t].name.toLowerCase()+'</b> last time too — the physio wants them alternated.';
 }
 $$('#logType button').forEach(b=>b.onclick=()=>setLogType(b.dataset.v));
 $('#wMinus').onclick=()=>nudge(-1); $('#wPlus').onclick=()=>nudge(1);
@@ -545,13 +764,20 @@ function nudge(dir){
   const i=$('#logWeight'); const inc=S.settings.inc||1;
   i.value=Math.max(0,Math.round((( parseFloat(i.value)||0)+dir*inc)*100)/100);
 }
-$('#btnLog').onclick=openLog;
+$('#btnLog').onclick=()=>openLog();   // wrap: a bare handler would pass the Event as `type`
 $('#logSave').onclick=()=>{
-  const wv=parseFloat($('#logWeight').value);
   const when=$('#logWhen').value? new Date($('#logWhen').value).getTime() : Date.now();
-  S.sessions.push({id:uid(),ts:when,type:logType,weight:isNaN(wv)?S.weight.current:wv,
-    sets:parseInt($('#logSets').value,10)||3, note:$('#logNote').value.trim()});
-  if(!isNaN(wv) && wv!==S.weight.current){ S.weight.current=wv; S.weight.setAt=when-1; }
+  const note=$('#logNote').value.trim();
+  if(logType==='climb'){
+    // one climb entry per day
+    S.sessions=S.sessions.filter(x=>!(x.type==='climb'&&startOfDay(x.ts)===startOfDay(when)));
+    S.sessions.push({id:uid(),ts:when,type:'climb',pain:logPain,note});
+  }else{
+    const wv=parseFloat($('#logWeight').value);
+    S.sessions.push({id:uid(),ts:when,type:logType,weight:isNaN(wv)?S.weight.current:wv,
+      sets:parseInt($('#logSets').value,10)||3, pain:logPain, note});
+    if(!isNaN(wv) && wv!==S.weight.current){ S.weight.current=wv; S.weight.setAt=when-1; }
+  }
   if(S.weight.setAt==null) S.weight.setAt=0;
   save(); syncPhase(); close($('#logScrim')); resetTimer(); render();
 };
@@ -698,9 +924,24 @@ function beep(f,d){
   }catch(e){}
 }
 async function requestWake(){
-  try{ if('wakeLock' in navigator && !timer.wake) timer.wake=await navigator.wakeLock.request('screen'); }catch(e){}
+  try{
+    if('wakeLock' in navigator && !timer.wake){
+      timer.wake=await navigator.wakeLock.request('screen');
+      timer.wake.addEventListener('release',()=>{ timer.wake=null; paintWake(); });
+    }
+  }catch(e){}
+  paintWake();
 }
-function releaseWake(){ try{ timer.wake&&timer.wake.release(); }catch(e){} timer.wake=null; }
+function releaseWake(){ try{ timer.wake&&timer.wake.release(); }catch(e){} timer.wake=null; paintWake(); }
+function paintWake(){
+  const el=$('#wakeHint'); if(!el) return;
+  if(!('wakeLock' in navigator)){
+    el.textContent='This browser can\u2019t hold the screen awake — set your auto-lock a bit longer.'; return;
+  }
+  el.textContent = timer.wake
+    ? 'Screen is being kept awake. It still stops if you close the tab.'
+    : 'Your screen is kept awake while the timer runs. It still stops if you close the tab.';
+}
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&timer.running) requestWake(); });
 
 /* ---------- boot ---------- */
@@ -715,6 +956,7 @@ setInterval(()=>{
 
 syncPhase();
 render();
+paintWake();
 if(!S.settings.bw) openSettings(true);
 
 if('serviceWorker' in navigator && location.protocol==='https:')
