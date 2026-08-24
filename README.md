@@ -48,6 +48,11 @@ don't know which mode the app is in.
   the app tells you to skip that day. Climbing outranks the 6 h timer, never counts toward
   the 4-session bump, and can carry its own pain rating.
 - **Phase 2** — when you hit 30 % BW it starts the 1-month countdown, then shows the H-tape decision.
+- **Get-ready countdown** — pressing Start gives you 5 s (configurable, 0 to skip) to get on the
+  edge, with the same per-second pips the rest phase uses. Every other work phase was already
+  announced — by the rest count-in or the hand-switch beep — the session's first one wasn't.
+- **Redo set** — restarts the set you're in, through the get-ready countdown, without losing your
+  place in the session. For when the rest ran out before you were back on the edge.
 - **Guided timer** — 30 s hold or 3 s up / 3 s down × 10, 2 min rests, 3 sets, with beeps, vibration, and a screen wake-lock.
 - **Pain 0–10** per session, plotted against load so you can see the trend that actually
   matters. Two stacked panels sharing one x-axis — never a dual y-axis, which would

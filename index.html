@@ -93,6 +93,7 @@
   .btn[disabled]{opacity:.45}
   .btns{display:flex;gap:10px}
   .btns>*{flex:1}
+  .btns.three .btn{font-size:15px;padding:14px 4px;white-space:nowrap}
   .fab{position:fixed;left:0;right:0;bottom:0;padding:10px 14px calc(10px + env(safe-area-inset-bottom));
     background:linear-gradient(to top,var(--bg) 62%,transparent);z-index:20}
   .fab .inner{max-width:520px;margin:0 auto;display:flex;gap:10px}
@@ -267,8 +268,9 @@
       <div id="tmrBig">0:30</div>
       <div class="cue" id="tmrCue" style="display:none">UP</div>
       <div id="tmrSub">3 sets · tap start when you're on the edge</div>
-      <div class="btns" style="margin-top:14px">
+      <div class="btns three" style="margin-top:14px">
         <button class="btn primary" id="tmrGo">Start</button>
+        <button class="btn ghost" id="tmrRedo">Redo set</button>
         <button class="btn ghost" id="tmrReset">Reset</button>
       </div>
       <p class="hint" id="wakeHint">Your screen is kept awake while the timer runs. It still stops if you close the tab.</p>
@@ -426,6 +428,10 @@
       <select id="sHand"><option value="left">Left hand</option><option value="right">Right hand</option></select></div>
     <div><label>Hand-switch delay (s)</label><input type="number" id="sSwitch" step="1" min="0" inputmode="numeric"></div>
   </div>
+  <div class="two">
+    <div><label>Get-ready countdown (s)</label><input type="number" id="sReady" step="1" min="0" inputmode="numeric"></div>
+    <div></div>
+  </div>
   <p class="hint" id="sHandHint"></p>
   <div class="two">
     <div><label>Start % of bodyweight</label><input type="number" id="sStart" step="1" inputmode="numeric"></div>
@@ -501,7 +507,7 @@ const fmtSecs=n=>n>=60&&n%60===0?(n/60)+' min':n+' s';
 /* ---------- state ---------- */
 const DEF={v:1,
   settings:{bw:null,inc:1,minHours:6,perIncrease:4,startPct:10,targetPct:30,
-            hands:2,switchSec:5,firstHand:'left',painOk:2,bridgeEndPct:48},
+            hands:2,switchSec:5,firstHand:'left',painOk:2,bridgeEndPct:48,readySec:5},
   mode:'rehab',
   weight:{current:null,setAt:null},
   training:{phase:'bridge',load:null,max:null,maxAt:null,blockStart:null,edge:20,loads:{}},
@@ -1216,7 +1222,7 @@ function openSettings(first){
   $('#sHours').value=s.minHours; $('#sPer').value=s.perIncrease;
   $('#sStart').value=s.startPct; $('#sTarget').value=s.targetPct;
   $('#sPainOk').value=s.painOk; $('#sBridge').value=s.bridgeEndPct;
-  $('#sHand').value=s.firstHand; $('#sSwitch').value=s.switchSec;
+  $('#sHand').value=s.firstHand; $('#sSwitch').value=s.switchSec; $('#sReady').value=s.readySec;
   updHandHint();
   $('#setTitle').textContent=first?'Set up':'Settings';
   $('#setIntro').textContent=first?'Two numbers and you are done.':'';
@@ -1250,6 +1256,7 @@ $('#sSave').onclick=()=>{
   s.bridgeEndPct=parseFloat($('#sBridge').value)||48;
   s.firstHand=$('#sHand').value==='right'?'right':'left';
   s.switchSec=Math.min(60,Math.max(0,parseInt($('#sSwitch').value,10)||0));
+  s.readySec =Math.min(30,Math.max(0,parseInt($('#sReady').value,10)||0));
   const c=parseFloat($('#sCur').value);
   if(!isNaN(c) && c!==S.weight.current){ S.weight.current=c; S.weight.setAt=Date.now(); }
   if(S.weight.setAt==null) S.weight.setAt=Date.now();
@@ -1295,6 +1302,7 @@ const timer={type:'static',pinned:false,running:false,phase:'idle',set:1,hand:0,
              rep:1,dir:'UP',cd:null,wake:null,queue:['static'],qi:0};
 const twoHand=()=>S.settings.hands!==1;
 const switchSec=()=>Math.max(0,+S.settings.switchSec||0);
+const readySec=()=>Math.max(0,+S.settings.readySec||0);
 const handName=i=>{
   const first=S.settings.firstHand==='right'?'Right':'Left';
   return i===0?first:(first==='Right'?'Left':'Right');
@@ -1323,10 +1331,12 @@ const blockLoad=id=>{ try{ return deriveTr(derive()).loadFor(id); }catch(e){ ret
 function paintTimer(){
   const ex=EX[timer.type], two=twoHand(), ph=timer.phase;
   const card=$('#tmrCard');
-  card.style.setProperty('--accent', ph==='rest'?'var(--wait)':ph==='switch'?'var(--warn)':'var(--ok)');
+  card.style.setProperty('--accent',
+    ph==='rest'?'var(--wait)':(ph==='switch'||ph==='ready')?'var(--warn)':'var(--ok)');
   let head;
   if(ph==='done') head='Finished';
   else if(ph==='idle') head=(ex.block?'Block session':ex.name)+' · ready';
+  else if(ph==='ready') head='Get on the edge';
   else if(ph==='work') head='Set '+timer.set+' — go';
   else if(ph==='switch') head='Switch hands';
   else head='Rest — set '+timer.set+' next';
@@ -1334,7 +1344,7 @@ function paintTimer(){
 
   const hl=$('#tmrHand');
   if(!two || ph==='idle' || ph==='done') hl.textContent = two&&ph==='idle' ? handName(0)+' hand first' : '';
-  else if(ph==='work') hl.textContent=handName(timer.hand)+' hand';
+  else if(ph==='ready'||ph==='work') hl.textContent=handName(timer.hand)+' hand';
   else if(ph==='switch') hl.textContent='→ '+handName(1)+' hand';
   else hl.textContent='both hands resting';
 
@@ -1358,6 +1368,9 @@ function paintTimer(){
       : 'Set '+timer.set+' of '+ex.sets+(two?' · '+handName(timer.hand)+' hand':'');
   }
   $('#tmrGo').textContent = timer.running?'Pause':(ph==='idle'||ph==='done'?'Start':'Resume');
+  const rd=$('#tmrRedo');
+  rd.disabled = !(ph==='work'||ph==='ready');
+  rd.textContent = ex.block||ex.reps ? 'Redo set' : 'Redo hold';
   $$('#tmrHands button').forEach(b=>{ b.classList.toggle('on', (+b.dataset.h===2)===two); b.disabled=timer.running; });
   // the static/dynamic rotation doesn't apply inside a block, so nothing is "out of turn" there
   const off = !ex.block && timer.type!==derive().nextType;
@@ -1374,12 +1387,29 @@ $('#tmrGo').onclick=()=>{
   if(timer.phase==='done') resetTimer();
   if(timer.running){ timer.running=false; releaseWake(); }
   else{
-    if(timer.phase==='idle'){ timer.phase='work'; timer.hand=0; timer.left=EX[timer.type].work; timer.rep=1; timer.dir='UP'; }
+    if(timer.phase==='idle'){
+      timer.hand=0; timer.rep=1; timer.dir='UP';
+      // every other work phase is announced — by the rest count-in or the hand-switch beep.
+      // The session's first one had nothing, which is what you were missing.
+      if(readySec()>0){ timer.phase='ready'; timer.left=readySec(); }
+      else { timer.phase='work'; timer.left=EX[timer.type].work; }
+    }
     timer.running=true; timer.endAt=Date.now()+timer.left*1000; requestWake(); beep(880,.08);
   }
   paintTimer();
 };
 $('#tmrReset').onclick=resetTimer;
+/* Restart the set you're in, without losing your place in the session — for when the rest
+   ran out before you were back on the edge. Goes through the get-ready countdown too. */
+$('#tmrRedo').onclick=()=>{
+  if(timer.phase!=='work' && timer.phase!=='ready') return;
+  timer.rep=1; timer.dir='UP';
+  if(readySec()>0) advance('ready',readySec());
+  else advance('work',EX[timer.type].work);
+  if(!timer.running){ timer.running=true; requestWake(); }
+  timer.endAt=Date.now()+timer.left*1000;
+  beep(880,.08); paintTimer();
+};
 $$('#tmrHands button').forEach(b=>b.onclick=()=>{
   if(timer.running) return;
   S.settings.hands=+b.dataset.h; save(); resetTimer();
@@ -1393,11 +1423,11 @@ $$('#tmrType button').forEach(b=>b.onclick=()=>{
 
 function advance(phase,secs){ timer.phase=phase; timer.left=secs; timer.endAt=Date.now()+secs*1000; timer.cd=null; }
 
-/* one pip on each of the last COUNTIN seconds of the rest phase only — never the
+/* one pip on each of the last COUNTIN seconds of the rest and get-ready phases — never the
    hand-switch, which is short enough that its own beep plus the go beep bracket it. */
 const COUNTIN=5;
 function countIn(){
-  if(timer.phase!=='rest'){ timer.cd=null; return; }
+  if(timer.phase!=='rest' && timer.phase!=='ready'){ timer.cd=null; return; }
   const s=Math.ceil(timer.left);
   if(s>COUNTIN||s<1){ if(s>COUNTIN) timer.cd=null; return; }
   if(s===timer.cd) return;
@@ -1424,6 +1454,8 @@ function tickTimer(){
       else if(timer.set>=ex.sets && timer.qi>=(timer.queue?timer.queue.length:1)-1){
         timer.phase='done'; timer.running=false; timer.left=0; releaseWake(); beep(1046,.5); }
       else{ advance('rest',restGap(ex)); beep(523,.3); }
+    }else if(timer.phase==='ready'){
+      timer.rep=1; timer.dir='UP'; advance('work',ex.work); beep(880,.25);
     }else if(timer.phase==='switch'){
       timer.hand=1; timer.rep=1; timer.dir='UP'; advance('work',ex.work); beep(880,.25);
     }else{
@@ -1492,7 +1524,7 @@ if('serviceWorker' in navigator && location.protocol==='https:')
   navigator.serviceWorker.register('./sw.js').catch(()=>{});
 
 window.__rehab={get S(){return S},set S(v){S=v},derive,deriveTr,render,save,load:()=>{S=load();},KEY,
-                timer,tickTimer,resetTimer,restGap,EX,COUNTIN,BLOCK_IDS,isTr,
+                timer,tickTimer,resetTimer,paintTimer,restGap,EX,COUNTIN,BLOCK_IDS,isTr,
                 set onBeep(f){ onBeep=f; }};
 })();
 </script>
