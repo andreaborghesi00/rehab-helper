@@ -179,6 +179,8 @@
     color:var(--tx2);font:14px inherit;font-family:inherit;font-weight:650;cursor:pointer}
   .pain button.on{background:var(--load-pain);border-color:transparent;color:#fff}
   .painrow{display:flex;justify-content:space-between;font-size:12px;color:var(--tx3);margin-top:7px}
+  input[type=range]{padding:0;background:transparent;border:0;height:38px;accent-color:var(--ok)}
+  input[type=range]:focus{outline:none}
 
   /* chart */
   .charthead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:2px}
@@ -444,6 +446,14 @@
     <div><label>Pain that still allows a step</label><input type="number" id="sPainOk" step="1" min="0" max="10" inputmode="numeric"></div>
     <div><label>Bridge ends at % BW</label><input type="number" id="sBridge" step="1" inputmode="numeric"></div>
   </div>
+  <label>Sound</label>
+  <div class="two">
+    <div><select id="sTone"></select></div>
+    <div style="display:flex;align-items:center"><input type="range" id="sVol" min="0" max="100" step="5"></div>
+  </div>
+  <div class="painrow"><span id="sVolVal">80%</span><span><button class="del" id="sTest">▶ test</button></span></div>
+  <p class="hint">Your phone's media volume applies on top of this, and the silent switch can mute it
+  entirely on iPhone. The test plays the two switch pips then the go tone.</p>
   <label>Backup</label>
   <div class="btns">
     <button class="btn ghost" id="sExport">Export</button>
@@ -502,6 +512,17 @@ Object.assign(EX,{
 BLOCK_IDS.forEach(id=>{ EX[id].steps=['<b>'+EX[id].name+'</b> — '+EX[id].cue+'.',
   '<b>10 s on, 50 s off</b>, '+EX[id].sets+' set'+(EX[id].sets>1?'s':'')+'.']; });
 const BLOCK_DAYS=30;
+/* Named cues rather than raw frequencies, so a tone set can move all of them together.
+   `swpip` is deliberately far from `pip`: one means "rest running out", the other means
+   "swap hands now", and you have to tell them apart without looking. */
+const TONES={
+  beeps:  {name:'Beeps',   wave:'sine',     go:880, rest:523, switch:740, pip:784,  swpip:1175, up:660, down:440, done:1046},
+  marimba:{name:'Marimba', wave:'triangle', go:659, rest:392, switch:523, pip:587,  swpip:880,  up:523, down:349, done:784},
+  chime:  {name:'Chime',   wave:'sine',     go:1175,rest:698, switch:880, pip:1047, swpip:1568, up:880, down:587, done:1568},
+  clicks: {name:'Clicks',  wave:'square',   go:1000,rest:600, switch:800, pip:900,  swpip:1400, up:750, down:500, done:1200}
+};
+const toneSet=()=>TONES[S.settings.tone]||TONES.beeps;
+const vol=()=>Math.max(.002,Math.min(1,(S.settings.vol==null?80:+S.settings.vol)/100));
 /* the Bellaroca hexagon, plus the 20 mm the rehab was built on */
 const EDGES=[{mm:28,l:'VI'},{mm:23,l:'V'},{mm:20,l:'pin'},{mm:18,l:'IV'},{mm:15,l:'III'},{mm:11,l:'II'},{mm:7,l:'I'}];
 const edgeLabel=mm=>{const e=EDGES.find(e=>e.mm===mm); return mm+' mm'+(e&&e.l!=='pin'?' ('+e.l+')':'');};
@@ -510,7 +531,8 @@ const fmtSecs=n=>n>=60&&n%60===0?(n/60)+' min':n+' s';
 /* ---------- state ---------- */
 const DEF={v:1,
   settings:{bw:null,inc:1,minHours:6,perIncrease:4,startPct:10,targetPct:30,
-            hands:2,switchSec:5,firstHand:'left',painOk:2,bridgeEndPct:48,readySec:5},
+            hands:2,switchSec:5,firstHand:'left',painOk:2,bridgeEndPct:48,readySec:5,
+            vol:80,tone:'beeps'},
   mode:'rehab',
   weight:{current:null,setAt:null},
   training:{phase:'bridge',load:null,max:null,maxAt:null,blockStart:null,edge:20,loads:{}},
@@ -1298,6 +1320,9 @@ function openSettings(first){
   $('#sStart').value=s.startPct; $('#sTarget').value=s.targetPct;
   $('#sPainOk').value=s.painOk; $('#sBridge').value=s.bridgeEndPct;
   $('#sHand').value=s.firstHand; $('#sSwitch').value=s.switchSec; $('#sReady').value=s.readySec;
+  $('#sTone').innerHTML=Object.keys(TONES).map(k=>'<option value="'+k+'">'+TONES[k].name+'</option>').join('');
+  $('#sTone').value=TONES[s.tone]?s.tone:'beeps';
+  $('#sVol').value=s.vol==null?80:s.vol; paintVol();
   updHandHint();
   $('#setTitle').textContent=first?'Set up':'Settings';
   $('#setIntro').textContent=first?'Two numbers and you are done.':'';
@@ -1332,12 +1357,26 @@ $('#sSave').onclick=()=>{
   s.firstHand=$('#sHand').value==='right'?'right':'left';
   s.switchSec=Math.min(60,Math.max(0,parseInt($('#sSwitch').value,10)||0));
   s.readySec =Math.min(30,Math.max(0,parseInt($('#sReady').value,10)||0));
+  s.vol=Math.min(100,Math.max(0,parseInt($('#sVol').value,10)||0));
+  s.tone=TONES[$('#sTone').value]?$('#sTone').value:'beeps';
   const c=parseFloat($('#sCur').value);
   if(!isNaN(c) && c!==S.weight.current){ S.weight.current=c; S.weight.setAt=Date.now(); }
   if(S.weight.setAt==null) S.weight.setAt=Date.now();
   save(); syncPhase(); close($('#setScrim')); render();
   if(!timer.running) resetTimer(); else paintTimer();
 };
+function paintVol(){ $('#sVolVal').textContent='Volume '+$('#sVol').value+'%'; }
+$('#sVol').oninput=paintVol;
+/* Auditions the controls as they're set, without writing them to state until you save. */
+function testTones(){
+  const set=TONES[$('#sTone').value]||TONES.beeps, v=(+$('#sVol').value||0)/100;
+  cue('swpip',.06,set,v);
+  setTimeout(()=>cue('swpip',.06,set,v),420);
+  setTimeout(()=>cue('go',.25,set,v),840);
+}
+$('#sTest').onclick=testTones;
+$('#sTone').onchange=testTones;
+
 $('#sExport').onclick=()=>{
   const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
   const a=document.createElement('a');
@@ -1469,7 +1508,7 @@ $('#tmrGo').onclick=()=>{
       if(readySec()>0){ timer.phase='ready'; timer.left=readySec(); }
       else { timer.phase='work'; timer.left=EX[timer.type].work; }
     }
-    timer.running=true; timer.endAt=Date.now()+timer.left*1000; requestWake(); beep(880,.08);
+    timer.running=true; timer.endAt=Date.now()+timer.left*1000; requestWake(); cue('go',.08);
   }
   paintTimer();
 };
@@ -1483,7 +1522,7 @@ $('#tmrRedo').onclick=()=>{
   else advance('work',EX[timer.type].work);
   if(!timer.running){ timer.running=true; requestWake(); }
   timer.endAt=Date.now()+timer.left*1000;
-  beep(880,.08); paintTimer();
+  cue('go',.08); paintTimer();
 };
 $$('#tmrHands button').forEach(b=>b.onclick=()=>{
   if(timer.running) return;
@@ -1498,15 +1537,18 @@ $$('#tmrType button').forEach(b=>b.onclick=()=>{
 
 function advance(phase,secs){ timer.phase=phase; timer.left=secs; timer.endAt=Date.now()+secs*1000; timer.cd=null; }
 
-/* one pip on each of the last COUNTIN seconds of the rest and get-ready phases — never the
-   hand-switch, which is short enough that its own beep plus the go beep bracket it. */
+/* One pip per second: through the last COUNTIN seconds of rest and get-ready, and through
+   EVERY second of the hand-switch. The switch pip has its own pitch, well clear of the rest
+   pip, so "swap hands now" and "rest running out" never sound alike. */
 const COUNTIN=5;
 function countIn(){
-  if(timer.phase!=='rest' && timer.phase!=='ready'){ timer.cd=null; return; }
+  const ph=timer.phase;
+  if(ph!=='rest' && ph!=='ready' && ph!=='switch'){ timer.cd=null; return; }
   const s=Math.ceil(timer.left);
-  if(s>COUNTIN||s<1){ if(s>COUNTIN) timer.cd=null; return; }
+  const within = ph==='switch' ? s>=1 : (s<=COUNTIN && s>=1);
+  if(!within){ if(s>COUNTIN) timer.cd=null; return; }
   if(s===timer.cd) return;
-  timer.cd=s; beep(784,.06);
+  timer.cd=s; cue(ph==='switch'?'swpip':'pip',.06);
 }
 
 function tickTimer(){
@@ -1517,42 +1559,44 @@ function tickTimer(){
     const done=ex.work-timer.left;
     const r=Math.min(ex.reps,Math.floor(done/6)+1);
     const dir=(done%6)<3?'UP':'DOWN';
-    if(r!==timer.rep||dir!==timer.dir){ timer.rep=r; timer.dir=dir; beep(dir==='UP'?660:440,.05); }
+    if(r!==timer.rep||dir!==timer.dir){ timer.rep=r; timer.dir=dir; cue(dir==='UP'?'up':'down',.05); }
   }
   countIn();
   if(timer.left<=0){
     if(timer.phase==='work'){
       if(twoHand() && timer.hand===0){
-        if(switchSec()>0){ advance('switch',switchSec()); beep(740,.15); }
-        else{ timer.hand=1; timer.rep=1; timer.dir='UP'; advance('work',ex.work); beep(880,.25); }
+        if(switchSec()>0){ advance('switch',switchSec()); cue('switch',.15); }
+        else{ timer.hand=1; timer.rep=1; timer.dir='UP'; advance('work',ex.work); cue('go',.25); }
       }
       else if(timer.set>=ex.sets && timer.qi>=(timer.queue?timer.queue.length:1)-1){
-        timer.phase='done'; timer.running=false; timer.left=0; releaseWake(); beep(1046,.5); }
-      else{ advance('rest',restGap(ex)); beep(523,.3); }
+        timer.phase='done'; timer.running=false; timer.left=0; releaseWake(); cue('done',.5); }
+      else{ advance('rest',restGap(ex)); cue('rest',.3); }
     }else if(timer.phase==='ready'){
-      timer.rep=1; timer.dir='UP'; advance('work',ex.work); beep(880,.25);
+      timer.rep=1; timer.dir='UP'; advance('work',ex.work); cue('go',.25);
     }else if(timer.phase==='switch'){
-      timer.hand=1; timer.rep=1; timer.dir='UP'; advance('work',ex.work); beep(880,.25);
+      timer.hand=1; timer.rep=1; timer.dir='UP'; advance('work',ex.work); cue('go',.25);
     }else{
       if(timer.set>=ex.sets){            // this exercise is done — roll into the next in the queue
         timer.qi++; timer.type=timer.queue[timer.qi]; timer.set=1;
       } else timer.set++;
       const nx=EX[timer.type];
-      timer.hand=0; timer.rep=1; timer.dir='UP'; advance('work',nx.work); beep(880,.25);
+      timer.hand=0; timer.rep=1; timer.dir='UP'; advance('work',nx.work); cue('go',.25);
     }
   }
   paintTimer();
 }
 let AC=null, onBeep=null;      // onBeep: test hook, see window.__rehab
-function beep(f,d){
+/* cue(name, seconds) — call sites name what happened; the tone set picks the pitch. */
+function cue(ev,d,set,v){ const t=set||toneSet(); beep(t[ev]||880, d, t.wave, v); }
+function beep(f,d,wave,v){
   if(onBeep) onBeep(f,d);
   try{
     AC=AC||new (window.AudioContext||window.webkitAudioContext)();
     if(AC.state==='suspended') AC.resume();
     const o=AC.createOscillator(), g=AC.createGain();
-    o.frequency.value=f; o.type='sine'; o.connect(g); g.connect(AC.destination);
+    o.frequency.value=f; o.type=wave||toneSet().wave; o.connect(g); g.connect(AC.destination);
     g.gain.setValueAtTime(.001,AC.currentTime);
-    g.gain.exponentialRampToValueAtTime(.25,AC.currentTime+.01);
+    g.gain.exponentialRampToValueAtTime(v==null?vol():Math.max(.002,Math.min(1,v)),AC.currentTime+.01);
     g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);
     o.start(); o.stop(AC.currentTime+d+.02);
     if(navigator.vibrate) navigator.vibrate(30);
@@ -1600,6 +1644,7 @@ if('serviceWorker' in navigator && location.protocol==='https:')
 
 window.__rehab={get S(){return S},set S(v){S=v},derive,deriveTr,render,save,load:()=>{S=load();},KEY,
                 timer,tickTimer,resetTimer,paintTimer,restGap,EX,COUNTIN,BLOCK_IDS,isTr,openLog,
+                TONES,cue,beep,
                 set onBeep(f){ onBeep=f; }};
 })();
 </script>

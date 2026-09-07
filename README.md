@@ -36,11 +36,9 @@ don't know which mode the app is in.
 - **Alternates** static → dynamic → static automatically, and warns you if you pick the same one twice.
 - **Tracks load** and tells you when you've done 4 sessions at the current weight, with a one-tap bump.
 - **Progress to 30 % bodyweight**, from your 10 % starting point.
-- **Climbing days** — pick "Climb" in the log sheet, or tap 🧗 which opens the same sheet with
-  Climb preselected. A climb counts for the **6 h spacing like any other session** — it doesn't
-  block the whole calendar day, so logging last night's session after midnight no longer costs
-  you today. Your physio's "skip a session on climbing days" note stays on the status card as
-  advice. Climbing never counts toward a progression step.
+- **Climbing days** — pick "Climb" in the log sheet (or tap 🧗 for the quick version) and
+  the app tells you to skip that day. Climbing outranks the 6 h timer, never counts toward
+  the 4-session bump, and can carry its own pain rating.
 - **Phase 2** — when you hit 30 % BW it starts the 1-month countdown, then shows the H-tape decision.
 - **Guided timer** — 30 s hold or 3 s up / 3 s down × 10, 2 min rests, 3 sets, with beeps, vibration, and a screen wake-lock.
 - **Pain 0–10** per session, plotted against load so you can see the trend that actually
@@ -53,10 +51,14 @@ don't know which mode the app is in.
 - **Edge tracking** — every training session records which edge (28/23/20/18/15/11/7 mm).
   Recorded alongside the load, never converted into it: a 7 mm edge at bodyweight is not
   "20 mm + X kg", and nothing here pretends otherwise.
-- **Edit anything** — tap a history row to reopen it with everything prefilled: time, weight,
-  pain, notes, edge, which block exercises you actually did. Editing is side-effect free — fixing
-  last Tuesday's time won't move today's working load or the remembered block loads. The one
-  exception is the most recent max test, where the number every block load derives from.
+- **Sound** — volume slider (defaults to 80 %, roughly three times the old fixed level) and four
+  tone sets: Beeps, Marimba, Chime, Clicks. They differ in waveform as well as pitch, so Clicks
+  cuts through a noisy gym in a way the sine sets don't. The ▶ test button auditions your choice
+  before you save it. Your phone's media volume applies on top, and an iPhone's silent switch
+  mutes it entirely.
+- **Hand-switch pips** — in Alternating hands mode the switch pips once per second at its own
+  pitch, well clear of the rest count-in, so you can tell "swap hands now" from "rest running
+  out" without looking at the screen.
 - **Backup** — export/import your history as JSON from Settings.
 
 ## Deploy to GitHub Pages
