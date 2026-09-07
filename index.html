@@ -118,6 +118,8 @@
   .hist li{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14.5px}
   .hist li:last-child{border-bottom:0}
   .hist .when{color:var(--tx3);font-size:12.5px}
+  .hist .tap{cursor:pointer}
+  .hist li:active .tap{opacity:.6}
   .hist .grow{flex:1;min-width:0}
   .hist .note{color:var(--tx3);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .del{background:none;border:0;color:var(--tx3);font-size:15px;padding:6px 4px;cursor:pointer;font-family:inherit}
@@ -336,8 +338,8 @@
 <!-- LOG SHEET -->
 <div class="scrim" id="logScrim"><div class="sheet">
   <div class="grab"></div>
-  <h2>Log a session</h2>
-  <label>Exercise</label>
+  <h2 id="logTitle">Log a session</h2>
+  <label id="logTypeLbl">Exercise</label>
   <div class="seg" id="logType">
     <button data-v="static">Static</button>
     <button data-v="dynamic">Dynamic</button>
@@ -374,6 +376,7 @@
     <button class="btn ghost" data-close>Cancel</button>
     <button class="btn primary" id="logSave">Save</button>
   </div>
+  <p class="center" style="margin:16px 0 0"><button class="del" id="logDel" style="display:none">Delete this entry</button></p>
 </div></div>
 
 <!-- MODE SHEET -->
@@ -567,6 +570,10 @@ function d0off(t){ return new Date(t).getTimezoneOffset()*60000; }
 
 /* ---------- derived ---------- */
 const allEx=()=>S.sessions.filter(s=>s.type!=='climb').sort((a,b)=>a.ts-b.ts);
+/* Spacing counts EVERYTHING, climbing included — a climb is a finger session too.
+   It used to block the whole calendar day, which punished logging a Saturday-night
+   session after midnight. The 6 h rule is the rule. */
+const allLogged=()=>[...S.sessions].sort((a,b)=>a.ts-b.ts);
 const exSessions=()=>allEx().filter(s=>s.mode!=='training');
 const isTr=()=>S.mode==='training';
 function derive(now){
@@ -574,8 +581,10 @@ function derive(now){
   const all=allEx(), ex=all.filter(s=>s.mode!=='training'), tr=all.filter(s=>s.mode==='training');
   // SPACING IS GLOBAL: the 6 h rule reads every session in both programmes, because
   // fingers have no idea which mode the app is in.
-  const lastAny=all[all.length-1]||null;
+  const logged=allLogged();
+  const lastAny=logged[logged.length-1]||null;
   const last=lastAny;
+  const lastWasClimb=!!(lastAny && lastAny.type==='climb');
   // the static/dynamic rotation carries across the rehab -> bridge handoff
   const lastRot=[...all].reverse().find(x=>x.type==='static'||x.type==='dynamic');
   const nextType = lastRot ? (lastRot.type==='static'?'dynamic':'static') : 'static';
@@ -594,10 +603,9 @@ function derive(now){
   const atTarget = (cur!=null && target!=null && cur>=target-1e-9);
   const dueIncrease = !atTarget && since>=S.settings.perIncrease;
   let state='ready';
-  if(climbedToday) state='climb';        // the climbing rule outranks the clock
-  else if(now<readyAt) state='waiting';
-  return {now,last,nextType,readyAt,climbedToday,target,cur,since,atTarget,dueIncrease,
-          state,count:ex.length,all,ex,tr};
+  if(now<readyAt) state='waiting';
+  return {now,last,lastWasClimb,nextType,readyAt,climbedToday,target,cur,since,atTarget,
+          dueIncrease,state,count:ex.length,all,ex,tr};
 }
 function deriveTr(d){
   const t=S.training, now=d.now, inc=S.settings.inc, bw=S.settings.bw;
@@ -653,19 +661,20 @@ function render(){
   // status card
   let accent='var(--ok)', pill='Ready', big='Go now', sub='', pct=1;
   if(d.state==='waiting'){
-    accent='var(--wait)'; pill='Resting';
+    accent=d.lastWasClimb?'var(--climb)':'var(--wait)';
+    pill=d.lastWasClimb?'After climbing':'Resting';
     big=fmtDur(d.readyAt-d.now);
     sub='Next window at <b>'+clock(d.readyAt)+'</b>'+(startOfDay(d.readyAt)!==startOfDay(d.now)?' ('+dayLabel(d.readyAt).toLowerCase()+')':'');
     const span=S.settings.minHours*HOUR;
     pct=Math.min(1,Math.max(0,1-(d.readyAt-d.now)/span));
-  }else if(d.state==='climb'){
-    accent='var(--climb)'; pill='Climbing day'; big='Skip today'; pct=1;
-    sub='You logged climbing today — rest the fingers.'+
-        (d.now<d.readyAt?' (6 h window opens at <b>'+clock(d.readyAt)+'</b> anyway.)':'');
   }else{
     accent='var(--ok)'; pill='Ready'; big=d.count? 'Go now':'Start now'; pct=1;
-    sub=d.last? 'Last session '+dayLabel(d.last.ts).toLowerCase()+' at '+clock(d.last.ts)
+    sub=d.last? 'Last '+(d.last.type==='climb'?'climb':'session')+' '+
+                dayLabel(d.last.ts).toLowerCase()+' at '+clock(d.last.ts)
               : 'No sessions yet — begin with the static hold.';
+    // the physio's skip-if-climbing note survives as advice, not as a lockout
+    if(d.climbedToday) sub+='<br><span style="color:var(--climb)">Climbed today — your physio\u2019s '+
+      'note says to skip a session on climbing days.</span>';
   }
   st.style.setProperty('--accent',accent);
   $('#stPill').textContent=pill;
@@ -859,13 +868,14 @@ function renderHistory(){
       : s.tphase==='test'?('max test · '+fmtKg(s.weight)+edg)
       : fmtKg(s.weight)+' · '+(s.sets||3)+' sets'+edg;
     const pb=s.pain!=null?'<span class="painbadge">'+s.pain+'</span>':'';
-    h+='<li>'+tag+'<div class="grow"><div>'+meta+'</div>'+
+    h+='<li>'+tag+'<div class="grow tap" data-edit="'+s.id+'" role="button" tabindex="0"><div>'+meta+'</div>'+
        (s.note?'<div class="note">'+esc(s.note)+'</div>':'')+'</div>'+pb+
-       '<span class="when">'+clock(s.ts)+'</span>'+
+       '<span class="when tap" data-edit="'+s.id+'">'+clock(s.ts)+'</span>'+
        '<button class="del'+(armed===s.id?' arm':'')+'" data-del="'+s.id+'">'+(armed===s.id?'Delete?':'✕')+'</button></li>';
   }
   h+='</ul>';
   w.innerHTML=h;
+  w.querySelectorAll('[data-edit]').forEach(el=>el.onclick=()=>openLog(null,el.dataset.edit));
   w.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
     const id=b.dataset.del;
     if(armed===id){ S.sessions=S.sessions.filter(x=>x.id!==id); armed=null; save(); syncPhase(); render(); }
@@ -1080,48 +1090,71 @@ function fillEdges(sel,val){
   sel.innerHTML=EDGES.map(e=>'<option value="'+e.mm+'">'+edgeLabel(e.mm)+'</option>').join('');
   sel.value=val;
 }
-function buildBlockRows(T){
+function buildBlockRows(T,vals){
   $('#blockFields').innerHTML='<label>Exercises</label>'+BLOCK_IDS.map(id=>{
-    const ex=EX[id], L=T.loadFor(id);
+    const ex=EX[id];
+    const on = !vals || vals[id]!=null;          // editing: only what was actually logged
+    const L  = vals ? vals[id] : T.loadFor(id);
     return '<div class="exrow" data-ex="'+id+'"><div class="nm"><b>'+ex.short+'</b><span>'+ex.sets+
       '× · '+ex.cue+'</span></div><input type="number" step="0.5" inputmode="decimal" value="'+
-      (L!=null?Math.round(L*100)/100:'')+'"><button type="button" class="tick on" aria-label="done">✓</button></div>';
+      (L!=null?Math.round(L*100)/100:'')+'"><button type="button" class="tick'+(on?' on':'')+
+      '" aria-label="done">✓</button></div>';
   }).join('')+'<p class="hint">Untick anything you skipped. The weights you save become the remembered loads.</p>';
   $$('#blockFields .tick').forEach(b=>b.onclick=()=>b.classList.toggle('on'));
 }
-function openLog(type){
-  const d=derive(), tr=isTr();
-  const T=tr?deriveTr(d):null;
-  const block = tr;
-  const opts = block ? [['block','Block'],['climb','Climb']]
-                     : [['static','Static'],['dynamic','Dynamic'],['climb','Climb']];
+let editId=null;
+function openLog(type,id){
+  const d=derive();
+  const E = id ? S.sessions.find(x=>x.id===id) : null;
+  editId = E ? id : null;
+  // when editing, the entry's own programme wins over whichever mode you're looking at
+  const tr = E ? (E.mode==='training') : isTr();
+  const T  = tr?deriveTr(d):null;
+  const isMax = !!(E && E.tphase==='test');
+  const opts = tr ? [['block','Block'],['climb','Climb']]
+                  : [['static','Static'],['dynamic','Dynamic'],['climb','Climb']];
   $('#logType').innerHTML=opts.map(o=>'<button data-v="'+o[0]+'">'+o[1]+'</button>').join('');
   $$('#logType button').forEach(b=>b.onclick=()=>setLogType(b.dataset.v));
-  if(tr) fillEdges($('#logEdge'), S.training.edge);
-  if(block) buildBlockRows(T); else $('#blockFields').innerHTML='';
-  const w = tr ? S.training.load : d.cur;
+  // a max test has no equivalent in the picker, so edit it without one
+  $('#logType').style.display = isMax?'none':'';
+  $('#logTypeLbl').style.display = isMax?'none':'';
+  $('#logTitle').textContent = E ? 'Edit entry' : 'Log a session';
+  $('#logSave').textContent  = E ? 'Save changes' : 'Save';
+
+  if(tr) fillEdges($('#logEdge'), (E&&E.edge!=null)?E.edge:S.training.edge);
+  if(tr) buildBlockRows(T, E&&E.type==='block'?(E.ex||{}):null); else $('#blockFields').innerHTML='';
+
+  const w = E ? E.weight : (tr ? S.training.load : d.cur);
   $('#logWeight').value = w!=null? Math.round(w*100)/100 : '';
-  $('#logSets').value='3';
-  $('#logWhen').value=toLocalInput(Date.now());
-  $('#logNote').value='';
-  logPain=null; paintPain();
-  // still defaults to what you actually trained, per the pinned override
-  setLogType(type || (block?'block'
-    : (timer.pinned && EX[timer.type] && !EX[timer.type].block) ? timer.type : d.nextType));
+  $('#logSets').value = String(E&&E.sets?E.sets:3);
+  $('#logWhen').value = toLocalInput(E?E.ts:Date.now());
+  $('#logNote').value = E&&E.note?E.note:'';
+  logPain = E ? (E.pain!=null?E.pain:null) : null; paintPain();
+  const dl=$('#logDel');
+  dl.style.display = E?'':'none'; dl.dataset.arm=''; dl.textContent='Delete this entry';
+  dl.classList.remove('arm');
+  setLogType(type || (E ? (isMax?'max':E.type)
+    : (tr?'block'
+       : (timer.pinned && EX[timer.type] && !EX[timer.type].block) ? timer.type : d.nextType)));
   open($('#logScrim'));
 }
 function setLogType(t){
-  if(t!=='climb' && t!=='block' && !EX[t]) t='static';
+  if(t!=='climb' && t!=='block' && t!=='max' && !EX[t]) t='static';
   logType=t;
   $$('#logType button').forEach(b=>b.classList.toggle('on',b.dataset.v===t));
-  const climb=t==='climb', block=t==='block';
+  const climb=t==='climb', block=t==='block', max=t==='max';
   $('#loadFields').style.display  = (climb||block)?'none':'';
-  $('#setsField').style.display   = (climb||block)?'none':'';
+  $('#setsField').style.display   = (climb||block||max)?'none':'';
   $('#blockFields').style.display = block?'':'none';
-  $('#edgeField').style.display   = (isTr()&&!climb)?'':'none';
+  const editingTr = editId ? (S.sessions.find(x=>x.id===editId)||{}).mode==='training' : isTr();
+  $('#edgeField').style.display   = (editingTr&&!climb)?'':'none';
   const d=derive();
-  $('#logTypeHint').innerHTML = climb
-    ? 'Climbing day — no session today. Max 1 h with H-taping. This never counts toward a progression step.'
+  // the rotation warning is advice about your NEXT session; it means nothing on an old entry
+  $('#logTypeHint').innerHTML = editId
+    ? (climb?'Climbing counts for the 6 h spacing like any session.':'Editing a past entry.')
+    : max ? 'Editing a max test.'
+    : climb
+    ? 'Climbing counts for the 6 h spacing like any session. Max 1 h with H-taping. It never counts toward a progression step.'
     : block ? '10 s on / 50 s off, all six exercises.'
     : t===d.nextType ? 'Alternating correctly.'
     : '⚠︎ You did <b>'+EX[t].name.toLowerCase()+'</b> last time too — these want alternating.';
@@ -1136,11 +1169,18 @@ $('#btnLog').onclick=()=>openLog();   // wrap: a bare handler would pass the Eve
 $('#logSave').onclick=()=>{
   const when=$('#logWhen').value? new Date($('#logWhen').value).getTime() : Date.now();
   const note=$('#logNote').value.trim();
-  const tr=isTr(), edge = tr ? +$('#logEdge').value : 20;
+  const prev = editId ? S.sessions.find(x=>x.id===editId) : null;
+  // an edit belongs to the entry's own programme, not to whatever mode is on screen
+  const tr = prev ? prev.mode==='training' : isTr();
+  const edge = tr ? +$('#logEdge').value : 20;
+  const wv=parseFloat($('#logWeight').value);
+  let rec;
+
   if(logType==='climb'){
-    // one climb entry per day
-    S.sessions=S.sessions.filter(x=>!(x.type==='climb'&&startOfDay(x.ts)===startOfDay(when)));
-    S.sessions.push({id:uid(),ts:when,mode:S.mode,type:'climb',edge,pain:logPain,note});
+    rec={ts:when,mode:prev?prev.mode:S.mode,type:'climb',edge,pain:logPain,note};
+    // one climb entry per day — but never dedupe against the entry being edited
+    S.sessions=S.sessions.filter(x=>!(x.type==='climb'&&startOfDay(x.ts)===startOfDay(when)
+                                      && x.id!==editId));
   }else if(logType==='block'){
     const exd={};
     $$('#blockFields .exrow').forEach(r=>{
@@ -1148,36 +1188,71 @@ $('#logSave').onclick=()=>{
       const v=parseFloat(r.querySelector('input').value);
       if(!isNaN(v)) exd[r.dataset.ex]=v;
     });
-    Object.assign(S.training.loads,exd);       // remember what was actually used
-    S.training.edge=edge;
-    // in the bridge the four-finger lift IS the ladder, so keep them in step
-    if(S.training.phase!=='block' && exd.b_crimp4!=null) S.training.load=exd.b_crimp4;
-    S.sessions.push({id:uid(),ts:when,mode:'training',tphase:S.training.phase,type:'block',
-      weight:exd.b_crimp4!=null?exd.b_crimp4:null, edge, pain:logPain, note, ex:exd});
+    rec={ts:when,mode:'training',tphase:prev?prev.tphase:S.training.phase,type:'block',
+         weight:exd.b_crimp4!=null?exd.b_crimp4:null, edge, pain:logPain, note, ex:exd};
+  }else if(logType==='max'){
+    rec={ts:when,mode:'training',tphase:'test',type:'max',
+         weight:isNaN(wv)?(prev?prev.weight:null):wv, edge, sets:1, pain:logPain, note};
   }else if(tr){
-    const wv=parseFloat($('#logWeight').value);
-    const w=isNaN(wv)?S.training.load:wv;
-    S.training.edge=edge; S.training.load=w;
-    S.sessions.push({id:uid(),ts:when,mode:'training',tphase:'bridge',type:logType,
-      weight:w, edge, sets:parseInt($('#logSets').value,10)||3, pain:logPain, note});
+    rec={ts:when,mode:'training',tphase:prev?prev.tphase:'bridge',type:logType,
+         weight:isNaN(wv)?S.training.load:wv, edge,
+         sets:parseInt($('#logSets').value,10)||3, pain:logPain, note};
   }else{
-    const wv=parseFloat($('#logWeight').value);
-    S.sessions.push({id:uid(),ts:when,mode:'rehab',type:logType,edge:20,
-      weight:isNaN(wv)?S.weight.current:wv,
-      sets:parseInt($('#logSets').value,10)||3, pain:logPain, note});
-    if(!isNaN(wv) && wv!==S.weight.current){ S.weight.current=wv; S.weight.setAt=when-1; }
+    rec={ts:when,mode:'rehab',type:logType,edge:20,
+         weight:isNaN(wv)?S.weight.current:wv,
+         sets:parseInt($('#logSets').value,10)||3, pain:logPain, note};
+  }
+
+  if(prev){
+    rec.id=prev.id;
+    S.sessions[S.sessions.findIndex(x=>x.id===prev.id)]=rec;
+    // editing the most recent max test is the one thing that must propagate,
+    // since every block working load is derived from that number
+    if(rec.tphase==='test'){
+      const tests=S.sessions.filter(x=>x.tphase==='test').sort((a,b)=>a.ts-b.ts);
+      const latest=tests[tests.length-1];
+      if(latest && latest.id===rec.id && rec.weight!=null){
+        S.training.max=rec.weight; S.training.maxAt=rec.ts; S.training.edge=rec.edge;
+      }
+    }
+    // NO side effects on an edit: fixing last Tuesday's time must not move today's
+    // working load, the remembered block loads, or the ladder.
+  }else{
+    rec.id=uid();
+    S.sessions.push(rec);
+    if(logType==='block'){
+      Object.assign(S.training.loads,rec.ex);   // remember what was actually used
+      S.training.edge=edge;
+      // in the bridge the four-finger lift IS the ladder, so keep them in step
+      if(S.training.phase!=='block' && rec.ex.b_crimp4!=null) S.training.load=rec.ex.b_crimp4;
+    }else if(logType==='max'){
+      /* handled by the max sheet */
+    }else if(tr && logType!=='climb'){
+      S.training.edge=edge; S.training.load=rec.weight;
+    }else if(!tr && logType!=='climb' && !isNaN(wv) && wv!==S.weight.current){
+      S.weight.current=wv; S.weight.setAt=when-1;
+    }
+    timer.pinned=false;               // logging hands the timer back to the rotation
+    resetTimer();
   }
   if(S.weight.setAt==null) S.weight.setAt=0;
-  timer.pinned=false;                 // logging hands the timer back to the rotation
-  save(); syncPhase(); close($('#logScrim')); resetTimer(); render();
+  editId=null;
+  save(); syncPhase(); close($('#logScrim')); render();
 };
-$('#btnClimb').onclick=()=>{
-  const today=startOfDay(Date.now());
-  const ex=S.sessions.find(s=>s.type==='climb'&&startOfDay(s.ts)===today);
-  if(ex){ S.sessions=S.sessions.filter(s=>s.id!==ex.id); }
-  else { S.sessions.push({id:uid(),ts:Date.now(),mode:S.mode,type:'climb',edge:20}); }
-  save(); render();
+$('#logDel').onclick=()=>{
+  if(!editId) return;
+  if($('#logDel').dataset.arm!=='1'){
+    $('#logDel').dataset.arm='1'; $('#logDel').textContent='Tap again to delete';
+    $('#logDel').classList.add('arm');
+    setTimeout(()=>{ const b=$('#logDel'); if(b){b.dataset.arm='';b.textContent='Delete this entry';b.classList.remove('arm');} },3000);
+    return;
+  }
+  S.sessions=S.sessions.filter(x=>x.id!==editId);
+  editId=null; save(); syncPhase(); close($('#logScrim')); render();
 };
+/* Opens the sheet instead of one-tap toggling: a climb logged at 00:30 for a session
+   that finished at 22:00 was silently landing on the wrong day. */
+$('#btnClimb').onclick=()=>openLog('climb');
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
 
 /* max test */
@@ -1524,7 +1599,7 @@ if('serviceWorker' in navigator && location.protocol==='https:')
   navigator.serviceWorker.register('./sw.js').catch(()=>{});
 
 window.__rehab={get S(){return S},set S(v){S=v},derive,deriveTr,render,save,load:()=>{S=load();},KEY,
-                timer,tickTimer,resetTimer,paintTimer,restGap,EX,COUNTIN,BLOCK_IDS,isTr,
+                timer,tickTimer,resetTimer,paintTimer,restGap,EX,COUNTIN,BLOCK_IDS,isTr,openLog,
                 set onBeep(f){ onBeep=f; }};
 })();
 </script>

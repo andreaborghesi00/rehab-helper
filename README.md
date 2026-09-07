@@ -14,22 +14,14 @@ The title in the top-left is a switch.
 
 **Finger training** — life after discharge, in three phases:
 
-1. **Bridge** — the six Abrahamsson exercises from day one, at a load that climbs.
-   The four-finger lift is the ladder; the other five scale off it by the protocol's own
-   relative intensities (80/80/55/55/35/35), and anything you re-tune by hand is carried
-   up in proportion when the ladder steps. +1 kg below 25 kg, +2 kg above, which keeps the
-   *relative* step roughly constant (a fixed +1 kg is a 14 % jump at 7 kg but only 3.7 % at
-   27 kg). A step unlocks after **2 painless sessions and at least 3 days** at that load —
-   pain is the gate, and the 3-day floor stops 2×/day from running the whole bridge in a week.
-
-   Note the bridge starts at your rehab endpoint but as a **10 s** hold, where rehab ended
-   on **30 s**. Same kilos, much easier hold — so the first steps are deliberately soft.
-   Test your max early if they feel trivial; the phase card offers it at any load.
-2. **Max test** — one hand, 7–10 s, on the edge you trained on. Available at any point in
-   the bridge, not just at the end.
-3. **Abrahamsson block** — the same six exercises for 30 days, 2× daily. What changes at the
-   test is only where the loads come from: **% of your tested max** rather than scaled off
-   the bridge ladder.
+1. **Bridge** — a faster ladder off the rehab endpoint. +1 kg below 25 kg, +2 kg above,
+   which keeps the *relative* step roughly constant (a fixed +1 kg is a 14 % jump at 7 kg
+   but only 3.7 % at 27 kg). A step unlocks after **2 painless sessions and at least 3 days**
+   at that load — pain is the gate, and the 3-day floor stops 2×/day from running the whole
+   bridge in a week.
+2. **Max test** — one hand, 7–10 s, on the edge you trained on.
+3. **Abrahamsson block** — 30 days, 2× daily, 10 s on / 50 s off, all six exercises.
+   Working loads are **% of your tested max**, not % of bodyweight.
 
 The block reuses the alternating-hands timer, so the second hand trains inside the first
 hand's rest: rest becomes 50 − 10 − 5 = 35 s, each hand still gets its full 50 s between
@@ -44,15 +36,12 @@ don't know which mode the app is in.
 - **Alternates** static → dynamic → static automatically, and warns you if you pick the same one twice.
 - **Tracks load** and tells you when you've done 4 sessions at the current weight, with a one-tap bump.
 - **Progress to 30 % bodyweight**, from your 10 % starting point.
-- **Climbing days** — pick "Climb" in the log sheet (or tap 🧗 for the quick version) and
-  the app tells you to skip that day. Climbing outranks the 6 h timer, never counts toward
-  the 4-session bump, and can carry its own pain rating.
+- **Climbing days** — pick "Climb" in the log sheet, or tap 🧗 which opens the same sheet with
+  Climb preselected. A climb counts for the **6 h spacing like any other session** — it doesn't
+  block the whole calendar day, so logging last night's session after midnight no longer costs
+  you today. Your physio's "skip a session on climbing days" note stays on the status card as
+  advice. Climbing never counts toward a progression step.
 - **Phase 2** — when you hit 30 % BW it starts the 1-month countdown, then shows the H-tape decision.
-- **Get-ready countdown** — pressing Start gives you 5 s (configurable, 0 to skip) to get on the
-  edge, with the same per-second pips the rest phase uses. Every other work phase was already
-  announced — by the rest count-in or the hand-switch beep — the session's first one wasn't.
-- **Redo set** — restarts the set you're in, through the get-ready countdown, without losing your
-  place in the session. For when the rest ran out before you were back on the edge.
 - **Guided timer** — 30 s hold or 3 s up / 3 s down × 10, 2 min rests, 3 sets, with beeps, vibration, and a screen wake-lock.
 - **Pain 0–10** per session, plotted against load so you can see the trend that actually
   matters. Two stacked panels sharing one x-axis — never a dual y-axis, which would
@@ -64,6 +53,10 @@ don't know which mode the app is in.
 - **Edge tracking** — every training session records which edge (28/23/20/18/15/11/7 mm).
   Recorded alongside the load, never converted into it: a 7 mm edge at bodyweight is not
   "20 mm + X kg", and nothing here pretends otherwise.
+- **Edit anything** — tap a history row to reopen it with everything prefilled: time, weight,
+  pain, notes, edge, which block exercises you actually did. Editing is side-effect free — fixing
+  last Tuesday's time won't move today's working load or the remembered block loads. The one
+  exception is the most recent max test, where the number every block load derives from.
 - **Backup** — export/import your history as JSON from Settings.
 
 ## Deploy to GitHub Pages
